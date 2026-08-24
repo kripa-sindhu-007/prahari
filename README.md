@@ -79,6 +79,7 @@ Requires Node 18+. Ships ESM + CJS with correct types for both.
 envguard example    # generate .env.example from your schema (descriptions → comments)
 envguard sync       # report drift between your schema and .env.example (exit 1 on drift)
 envguard doctor     # validate the current environment, red/green per variable
+envguard docs       # print a Markdown table of your variables (paste into your README)
 ```
 
 `envguard example` produces a documented template straight from your schema:

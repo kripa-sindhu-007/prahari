@@ -9,6 +9,7 @@ import { parseArgs } from "node:util";
 
 import { formatReport } from "../report.js";
 import { renderEnvExample } from "./example.js";
+import { renderDocs } from "./docs.js";
 import { runDoctor } from "./doctor.js";
 import { computeDrift, hasDrift, parseEnvKeys } from "./sync.js";
 import { loadSchema, resolveConfigPath } from "./load.js";
@@ -33,11 +34,12 @@ ${bold("Commands:")}
   example    generate a .env.example from your schema
   sync       report drift between your schema and an env file
   doctor     validate the current environment against your schema
+  docs       print a Markdown table documenting your variables
 
 ${bold("Options:")}
   -c, --config <path>   config module (default: env.ts / src/env.ts / …)
   -f, --file <path>     env file to compare (sync; default: .env.example)
-  -o, --out <path>      output file (example; default: .env.example)
+  -o, --out <path>      output file (example: default .env.example; docs: stdout)
       --stdout          print to stdout instead of writing a file (example)
   -h, --help            show this help
 `;
@@ -112,6 +114,26 @@ async function cmdSync(io: RunIO, values: Record<string, unknown>): Promise<numb
   return 1;
 }
 
+async function cmdDocs(io: RunIO, values: Record<string, unknown>): Promise<number> {
+  const { schema, path } = await getSchema(io, values.config as string | undefined);
+  const content = renderDocs(schema);
+
+  const outFlag = values.out as string | undefined;
+  if (!outFlag) {
+    io.stdout(content);
+    return 0;
+  }
+
+  const out = resolve(io.cwd, outFlag);
+  writeFileSync(out, content);
+  io.stdout(
+    `${tick} wrote docs for ${bold(String(Object.keys(schema).length))} variable(s) to ${bold(
+      relative(io.cwd, out),
+    )} ${dim(`(from ${relative(io.cwd, path)})`)}\n`,
+  );
+  return 0;
+}
+
 async function cmdDoctor(io: RunIO, values: Record<string, unknown>): Promise<number> {
   const { schema } = await getSchema(io, values.config as string | undefined);
   const { ok, failures } = runDoctor(schema, io.env ?? process.env);
@@ -161,6 +183,8 @@ export async function run(argv: string[], io: RunIO): Promise<number> {
         return await cmdSync(io, values);
       case "doctor":
         return await cmdDoctor(io, values);
+      case "docs":
+        return await cmdDocs(io, values);
       default:
         io.stderr(`${cross} unknown command: ${bold(command)}\n\n${HELP}`);
         return 1;

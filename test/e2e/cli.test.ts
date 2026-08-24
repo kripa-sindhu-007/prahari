@@ -84,6 +84,13 @@ describe("e2e: real bin", () => {
     expect(good.out).toContain("valid");
   });
 
+  it("docs prints a Markdown table (exit 0)", () => {
+    const r = cli(fixture(), ["docs"]);
+    expect(r.code).toBe(0);
+    expect(r.out).toContain("| Variable | Type | Required | Default | Description |");
+    expect(r.out).toContain("`DATABASE_URL`");
+  });
+
   it("doctor redacts secrets in its report (no leak)", () => {
     const r = cli(fixture(), ["doctor"], { STRIPE_KEY: "pk_leak_me_e2e" });
     expect(r.code).toBe(1);
