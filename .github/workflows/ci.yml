@@ -16,6 +16,9 @@ jobs:
   test:
     name: test + coverage (node 22)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # to post the coverage table as a PR comment
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +38,18 @@ jobs:
 
       - name: Test + coverage (95% threshold enforced)
         run: pnpm test:cov
+
+      # Renders a coverage table on the run's Summary page, and comments it on PRs.
+      - name: Coverage report
+        if: always()
+        uses: davelosert/vitest-coverage-report-action@v2
+
+      - name: Upload coverage HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage/
 
       - name: Type-level tests
         run: pnpm test:types

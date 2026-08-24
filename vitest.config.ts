@@ -20,7 +20,10 @@ export default defineConfig({
         "src/cli/index.ts", // 12-line bin bootstrap; exercised by the E2E spawn tests
         "src/**/*.d.ts",
       ],
-      reporter: ["text", "html"],
+      // json-summary + json feed the CI coverage report (job summary + PR comment);
+      // html is the downloadable artifact; text prints in the run logs.
+      reporter: ["text", "html", "json", "json-summary"],
+      reportOnFailure: true,
       thresholds: {
         lines: 95,
         functions: 95,
