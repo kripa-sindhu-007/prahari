@@ -140,6 +140,22 @@ describe("run — sync", () => {
   });
 });
 
+describe("run — docs", () => {
+  it("prints a Markdown table to stdout (exit 0)", async () => {
+    const c = capture(fixture());
+    expect(await run(["docs"], c.io)).toBe(0);
+    expect(c.out()).toContain("| Variable | Type | Required | Default | Description |");
+    expect(c.out()).toContain("`DATABASE_URL`");
+  });
+  it("writes to a file with --out", async () => {
+    const dir = fixture();
+    const c = capture(dir);
+    expect(await run(["docs", "--out", "ENV.md"], c.io)).toBe(0);
+    expect(c.out()).toContain("wrote docs for");
+    expect(readFileSync(join(dir, "ENV.md"), "utf8")).toContain("| Variable |");
+  });
+});
+
 describe("run — doctor", () => {
   const validEnv = {
     DATABASE_URL: "postgres://localhost/db",

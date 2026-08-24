@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { defineEnv, str, num, port, bool, url, oneOf, json, type Validator } from "../src/index";
 import { parseEnvKeys, computeDrift, hasDrift } from "../src/cli/sync";
 import { renderEnvExample } from "../src/cli/example";
+import { renderDocs } from "../src/cli/docs";
 import { runDoctor } from "../src/cli/doctor";
 import { resolveConfigPath } from "../src/cli/load";
 import {
@@ -49,6 +50,26 @@ describe("renderEnvExample", () => {
     expect(out).toContain("(optional");
     expect(out).toMatch(/KEY=\n/); // secret value blank
     expect(out).toContain("PORT=8080");
+  });
+});
+
+describe("renderDocs", () => {
+  it("renders a Markdown table with required/default and redacts secret defaults", () => {
+    const md = renderDocs({
+      DATABASE_URL: str().desc("Postgres connection string"),
+      PORT: port().default(3000),
+      MODE: oneOf(["a", "b"]),
+      API_KEY: str().secret(),
+      NAME: str().optional(),
+    });
+    expect(md).toContain("| Variable | Type | Required | Default | Description |");
+    expect(md).toContain("| `DATABASE_URL` | string | yes | — | Postgres connection string |");
+    expect(md).toContain("| `PORT` | port | no | `3000` |  |");
+    expect(md).toContain("(secret)");
+    // an optional field is not "required"
+    expect(md).toMatch(/\| `NAME` \| string \| no \|/);
+    // enum values are listed in the type cell
+    expect(md).toContain("`a`");
   });
 });
 
