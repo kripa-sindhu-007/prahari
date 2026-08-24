@@ -1,0 +1,17 @@
+/**
+ * envguard — type-safe, self-documenting environment variables for TypeScript.
+ *
+ * Public runtime entry. This module has ZERO runtime dependencies by design —
+ * the CLI (jiti, file IO) lives under `./cli` and is never imported here.
+ *
+ * `defineEnv` is the orchestrator; the `str/num/...` factories declare fields.
+ */
+
+export const VERSION = "0.1.0";
+
+export { defineEnv } from "./core.js";
+export type { DefineEnvOptions } from "./core.js";
+export { str, num, port, bool, url, oneOf, json } from "./validators.js";
+export type { Validator, Infer, EnvSchema, InferEnv, ValidatorMeta } from "./validators.js";
+export { EnvFieldError, EnvValidationError, isEnvFieldError } from "./errors.js";
+export type { FieldFailure } from "./errors.js";

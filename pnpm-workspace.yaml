@@ -1,0 +1,6 @@
+allowBuilds:
+  esbuild: true
+# pnpm 11 reads project settings from here (no longer from package.json's "pnpm" field).
+# Allow esbuild (pulled in by tsup) to run its install script so its native binary is set up.
+onlyBuiltDependencies:
+  - esbuild

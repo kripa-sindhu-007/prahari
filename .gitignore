@@ -1,0 +1,12 @@
+# Local-only planning / pre-development docs — never published
+planning/
+
+# Node
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# Env files (dogfooding our own tool later)
+.env
+.env.local
