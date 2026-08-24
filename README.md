@@ -1,5 +1,11 @@
 # envguard
 
+[![CI](https://github.com/kripa-sindhu-007/envguard/actions/workflows/ci.yml/badge.svg)](https://github.com/kripa-sindhu-007/envguard/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/envguard.svg)](https://www.npmjs.com/package/envguard)
+[![coverage](https://img.shields.io/badge/coverage-%3E95%25-brightgreen.svg)](#testing)
+[![types](https://img.shields.io/badge/types-included-blue.svg)](#)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
 > Type-safe, self-documenting environment variables for TypeScript — fail loudly at boot, and never let your `.env.example` drift from reality.
 
 `process.env.*` is a bag of untyped, unvalidated strings your app trusts blindly — so a
