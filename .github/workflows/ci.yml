@@ -6,30 +6,25 @@ on:
   pull_request:
     branches: [main]
 
-# Cancel superseded runs on the same ref (e.g. new push to an open PR).
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Full test suite + coverage + packaging. Uses pnpm, which needs Node >= 22.13,
+  # so the toolchain runs on Node 22. Produces the packed tarball for the compat job.
   test:
-    name: test (node ${{ matrix.node }})
+    name: test + coverage (node 22)
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [18, 20, 22]
-
     steps:
       - uses: actions/checkout@v4
 
-      # corepack must run before setup-node so the pnpm cache can resolve.
       - name: Enable corepack (pnpm)
         run: corepack enable
 
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22
           cache: pnpm
 
       - name: Install
@@ -46,3 +41,50 @@ jobs:
 
       - name: Packaging checks (publint + attw)
         run: pnpm test:package
+
+      - name: Pack the tarball
+        run: pnpm pack --pack-destination .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-tarball
+          path: ./*.tgz
+
+  # Verify the PUBLISHED package works on every supported Node (18+), installed
+  # with npm (no pnpm), both ESM and CJS, plus the CLI bin.
+  compat:
+    name: runtime compat (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: package-tarball
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install the packed tarball into a clean project
+        run: |
+          mkdir smoke && cd smoke
+          npm init -y >/dev/null 2>&1
+          npm install ../*.tgz
+
+      - name: Smoke — CommonJS
+        working-directory: smoke
+        run: |
+          node -e "const { defineEnv, port } = require('envguard'); const e = defineEnv({ PORT: port().default(3000) }, { source: {} }); if (e.PORT !== 3000) { throw new Error('cjs failed'); } console.log('cjs ok:', e.PORT);"
+
+      - name: Smoke — ESM
+        working-directory: smoke
+        run: |
+          node --input-type=module -e "import { defineEnv, port } from 'envguard'; const e = defineEnv({ PORT: port().default(3000) }, { source: {} }); if (e.PORT !== 3000) { throw new Error('esm failed'); } console.log('esm ok:', e.PORT);"
+
+      - name: Smoke — CLI bin
+        working-directory: smoke
+        run: npx envguard --help
