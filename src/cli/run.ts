@@ -26,9 +26,9 @@ export interface RunIO {
 /** A user-facing CLI failure — caught by `run`, printed, turned into exit 1. */
 class CliError extends Error {}
 
-export const HELP = `${bold("envguard")} — type-safe environment variables
+export const HELP = `${bold("prahari")} — type-safe environment variables
 
-${bold("Usage:")} envguard <command> [options]
+${bold("Usage:")} prahari <command> [options]
 
 ${bold("Commands:")}
   example    generate a .env.example from your schema
@@ -92,7 +92,7 @@ async function cmdSync(io: RunIO, values: Record<string, unknown>): Promise<numb
   const rel = relative(io.cwd, file);
 
   if (!existsSync(file)) {
-    io.stderr(`${cross} ${bold(rel)} does not exist. Run ${bold("envguard example")} to create it.\n`);
+    io.stderr(`${cross} ${bold(rel)} does not exist. Run ${bold("prahari example")} to create it.\n`);
     return 1;
   }
 
@@ -110,7 +110,7 @@ async function cmdSync(io: RunIO, values: Record<string, unknown>): Promise<numb
   for (const key of drift.unknown) {
     io.stdout(`  ${red("-")} ${key} ${dim("— in file, not in schema")}\n`);
   }
-  io.stdout(`\n${dim("Run `envguard example` to regenerate.")}\n`);
+  io.stdout(`\n${dim("Run `prahari example` to regenerate.")}\n`);
   return 1;
 }
 

@@ -93,13 +93,13 @@ jobs:
       - name: Smoke — CommonJS
         working-directory: smoke
         run: |
-          node -e "const { defineEnv, port } = require('envguard'); const e = defineEnv({ PORT: port().default(3000) }, { source: {} }); if (e.PORT !== 3000) { throw new Error('cjs failed'); } console.log('cjs ok:', e.PORT);"
+          node -e "const { defineEnv, port } = require('prahari'); const e = defineEnv({ PORT: port().default(3000) }, { source: {} }); if (e.PORT !== 3000) { throw new Error('cjs failed'); } console.log('cjs ok:', e.PORT);"
 
       - name: Smoke — ESM
         working-directory: smoke
         run: |
-          node --input-type=module -e "import { defineEnv, port } from 'envguard'; const e = defineEnv({ PORT: port().default(3000) }, { source: {} }); if (e.PORT !== 3000) { throw new Error('esm failed'); } console.log('esm ok:', e.PORT);"
+          node --input-type=module -e "import { defineEnv, port } from 'prahari'; const e = defineEnv({ PORT: port().default(3000) }, { source: {} }); if (e.PORT !== 3000) { throw new Error('esm failed'); } console.log('esm ok:', e.PORT);"
 
       - name: Smoke — CLI bin
         working-directory: smoke
-        run: npx envguard --help
+        run: npx prahari --help

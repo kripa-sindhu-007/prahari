@@ -29,7 +29,7 @@ export const env = defineEnv({
 
 const dirs: string[] = [];
 function fixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), "envguard-e2e-"));
+  const dir = mkdtempSync(join(tmpdir(), "prahari-e2e-"));
   writeFileSync(join(dir, "env.ts"), SCHEMA);
   dirs.push(dir);
   return dir;

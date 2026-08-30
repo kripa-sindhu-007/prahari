@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * envguard CLI bin — a thin wrapper around `run` (in `run.ts`), which holds all
+ * prahari CLI bin — a thin wrapper around `run` (in `run.ts`), which holds all
  * the testable routing/command logic.
  */
 

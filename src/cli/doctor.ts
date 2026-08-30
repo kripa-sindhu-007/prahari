@@ -1,5 +1,5 @@
 /**
- * `envguard doctor` — validate the CURRENT environment against the schema and
+ * `prahari doctor` — validate the CURRENT environment against the schema and
  * print a per-variable red/green table.
  *
  * Pure evaluator (unit-testable); the command wrapper prints + sets exit code.

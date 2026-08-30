@@ -1,5 +1,5 @@
 /**
- * envguard — type-safe, self-documenting environment variables for TypeScript.
+ * prahari — type-safe, self-documenting environment variables for TypeScript.
  *
  * Public runtime entry. This module has ZERO runtime dependencies by design —
  * the CLI (jiti, file IO) lives under `./cli` and is never imported here.

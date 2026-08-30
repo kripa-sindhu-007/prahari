@@ -24,7 +24,7 @@ export function formatReport(failures: FieldFailure[]): string {
 
   const noun = failures.length === 1 ? "variable" : "variables";
   return [
-    `envguard: ${failures.length} environment ${noun} failed validation`,
+    `prahari: ${failures.length} environment ${noun} failed validation`,
     "",
     ...rows,
     "",

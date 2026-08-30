@@ -1,10 +1,18 @@
 {
-  "name": "envguard",
+  "name": "prahari",
   "version": "0.1.0",
   "description": "Type-safe, self-documenting environment variables for TypeScript — fail loudly at boot, and never let your .env.example drift from reality.",
   "type": "module",
   "license": "MIT",
   "author": "Kripa Sindhu",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kripa-sindhu-007/prahari.git"
+  },
+  "homepage": "https://github.com/kripa-sindhu-007/prahari#readme",
+  "bugs": {
+    "url": "https://github.com/kripa-sindhu-007/prahari/issues"
+  },
   "keywords": [
     "env",
     "environment-variables",
@@ -42,7 +50,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "envguard": "./dist/cli.js"
+    "prahari": "./dist/cli.js"
   },
   "publishConfig": {
     "access": "public",

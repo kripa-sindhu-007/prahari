@@ -90,7 +90,7 @@ describe("resolveConfigPath", () => {
     expect(resolveConfigPath("nope-does-not-exist.ts", process.cwd())).toBeNull();
   });
   it("returns null when no conventional config exists", () => {
-    const empty = mkdtempSync(join(tmpdir(), "envguard-noconf-"));
+    const empty = mkdtempSync(join(tmpdir(), "prahari-noconf-"));
     expect(resolveConfigPath(undefined, empty)).toBeNull();
   });
   it("returns an explicit path that exists", () => {
