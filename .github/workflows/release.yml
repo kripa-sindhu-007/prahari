@@ -1,8 +1,11 @@
 name: Release
 
 # Publishes to npm when a version tag (vX.Y.Z) is pushed.
-#   git tag v0.1.0 && git push origin v0.1.0
-# Requires an npm automation token in the repo secret NPM_TOKEN.
+#   git tag v0.1.1 && git push origin v0.1.1
+# Auth is via npm Trusted Publishing (OIDC) — no NPM_TOKEN. The package must
+# have a trusted publisher configured on npmjs.com pointing at this repo +
+# workflow file (release.yml). Provenance is generated automatically from the
+# OIDC identity. Needs npm >= 11.5.1 (upgraded below) and id-token: write.
 on:
   push:
     tags:
@@ -27,6 +30,9 @@ jobs:
           node-version: 22
           cache: pnpm
           registry-url: "https://registry.npmjs.org"
+
+      - name: Upgrade npm for OIDC trusted publishing (needs >= 11.5.1)
+        run: npm install -g npm@latest
 
       - name: Install
         run: pnpm install --frozen-lockfile
@@ -53,10 +59,8 @@ jobs:
       - name: Packaging checks
         run: pnpm test:package
 
-      - name: Publish to npm
+      - name: Publish to npm (Trusted Publishing / OIDC — no token)
         run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         run: gh release create "$GITHUB_REF_NAME" --generate-notes --title "$GITHUB_REF_NAME"
