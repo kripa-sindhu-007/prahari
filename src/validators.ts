@@ -1,5 +1,5 @@
 /**
- * Built-in, zero-dependency validators for envguard.
+ * Built-in, zero-dependency validators for prahari.
  *
  * A validator describes one environment variable: how to coerce its (always
  * string) raw value into a typed value, what extra checks apply, and metadata

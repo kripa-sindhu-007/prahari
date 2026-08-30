@@ -1,5 +1,5 @@
 /**
- * `envguard sync` — report drift between the schema and an env file
+ * `prahari sync` — report drift between the schema and an env file
  * (default `.env.example`).
  *
  * Pure functions (unit-testable); the command wrapper does the file IO + output.

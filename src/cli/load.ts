@@ -2,7 +2,7 @@
  * Loads a user's env config module and returns the schema it declared —
  * WITHOUT running validation.
  *
- * The trick: set `ENVGUARD_SKIP_VALIDATION=1` before importing, so `defineEnv`
+ * The trick: set `PRAHARI_SKIP_VALIDATION=1` before importing, so `defineEnv`
  * registers its schema (into the globalThis registry) and returns a harmless
  * proxy instead of validating/throwing. We then read the registry back. `jiti`
  * lets us import a TypeScript config at runtime with no build step.
@@ -46,7 +46,7 @@ export function resolveConfigPath(
 
 /** Import the config for its schema only (no validation). */
 export async function loadSchema(configPath: string): Promise<EnvSchema> {
-  process.env.ENVGUARD_SKIP_VALIDATION = "1";
+  process.env.PRAHARI_SKIP_VALIDATION = "1";
   clearRegistry();
   // moduleCache:false so re-loading the same config path re-runs defineEnv
   // (otherwise a second load after clearRegistry() would see an empty schema).

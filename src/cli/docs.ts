@@ -1,5 +1,5 @@
 /**
- * `envguard docs` — render a Markdown table of every variable, straight from the
+ * `prahari docs` — render a Markdown table of every variable, straight from the
  * schema, so a project can paste an always-current env reference into its README.
  *
  * Pure renderer (unit-testable); the command wrapper does the IO.

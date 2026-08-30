@@ -5,10 +5,10 @@ import { clearRegistry, getRegisteredSchema } from "../src/registry";
 
 beforeEach(() => {
   clearRegistry();
-  delete process.env.ENVGUARD_SKIP_VALIDATION;
+  delete process.env.PRAHARI_SKIP_VALIDATION;
 });
 afterEach(() => {
-  delete process.env.ENVGUARD_SKIP_VALIDATION;
+  delete process.env.PRAHARI_SKIP_VALIDATION;
 });
 
 describe("defineEnv — happy path", () => {
@@ -110,7 +110,7 @@ describe("defineEnv — registry & introspection", () => {
   });
 
   it("skip mode registers the schema but never validates or throws", () => {
-    process.env.ENVGUARD_SKIP_VALIDATION = "1";
+    process.env.PRAHARI_SKIP_VALIDATION = "1";
     // Missing required PORT would normally throw — in skip mode it must not.
     const env = defineEnv({ PORT: port(), URL: str() }, { source: {} });
     expect(env.PORT).toBeUndefined();

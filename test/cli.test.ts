@@ -22,7 +22,7 @@ export const env = defineEnv({
 
 const dirs: string[] = [];
 function fixture(body = SCHEMA_BODY): string {
-  const dir = mkdtempSync(join(tmpdir(), "envguard-cli-"));
+  const dir = mkdtempSync(join(tmpdir(), "prahari-cli-"));
   writeFileSync(join(dir, "env.ts"), body);
   dirs.push(dir);
   return dir;
@@ -41,10 +41,10 @@ function capture(cwd: string, env?: Record<string, string | undefined>) {
 }
 
 beforeEach(() => {
-  delete process.env.ENVGUARD_SKIP_VALIDATION;
+  delete process.env.PRAHARI_SKIP_VALIDATION;
 });
 afterEach(() => {
-  delete process.env.ENVGUARD_SKIP_VALIDATION;
+  delete process.env.PRAHARI_SKIP_VALIDATION;
   while (dirs.length) rmSync(dirs.pop()!, { recursive: true, force: true });
 });
 
@@ -73,7 +73,7 @@ describe("run — help & routing", () => {
 
 describe("run — config resolution", () => {
   it("fails clearly when no config is found", async () => {
-    const c = capture(mkdtempSync(join(tmpdir(), "envguard-empty-")));
+    const c = capture(mkdtempSync(join(tmpdir(), "prahari-empty-")));
     expect(await run(["example"], c.io)).toBe(1);
     expect(c.err()).toContain("no env config found");
   });

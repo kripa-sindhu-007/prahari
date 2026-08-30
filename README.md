@@ -1,7 +1,9 @@
-# envguard
+# prahari
 
-[![CI](https://github.com/kripa-sindhu-007/envguard/actions/workflows/ci.yml/badge.svg)](https://github.com/kripa-sindhu-007/envguard/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/envguard.svg)](https://www.npmjs.com/package/envguard)
+*प्रहरी — "the sentinel." It stands watch over your environment config and refuses to let a misconfigured process past the gate.*
+
+[![CI](https://github.com/kripa-sindhu-007/prahari/actions/workflows/ci.yml/badge.svg)](https://github.com/kripa-sindhu-007/prahari/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/prahari.svg)](https://www.npmjs.com/package/prahari)
 [![coverage](https://img.shields.io/badge/coverage-%3E95%25-brightgreen.svg)](#testing)
 [![types](https://img.shields.io/badge/types-included-blue.svg)](#)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
@@ -10,7 +12,7 @@
 
 `process.env.*` is a bag of untyped, unvalidated strings your app trusts blindly — so a
 misconfigured deploy doesn't fail when you ship it, it fails **later, in production**, far
-from the cause. **envguard** turns those strings into a typed, validated, frozen config that
+from the cause. **prahari** turns those strings into a typed, validated, frozen config that
 crashes at startup with a readable report — and gives you a CLI that keeps your
 `.env.example` and docs honest automatically.
 
@@ -35,7 +37,7 @@ if (process.env.DEBUG === "true") { /* ... */ } // "false" is a truthy string…
 ```ts
 // ✅ after — validated ONCE, at boot
 // env.ts
-import { defineEnv, str, port, bool, oneOf } from "envguard";
+import { defineEnv, str, port, bool, oneOf } from "prahari";
 
 export const env = defineEnv({
   NODE_ENV: oneOf(["development", "production", "test"]).default("development"),
@@ -53,7 +55,7 @@ env.DEBUG;       // boolean
 If something's missing or malformed, the process **refuses to start** and tells you exactly why:
 
 ```
-envguard: 2 environment variables failed validation
+prahari: 2 environment variables failed validation
 
   ✗ DATABASE_URL  (string)  is required but was not set
   ✗ STRIPE_KEY    (string)  must start with "sk_"   received: ***
@@ -66,7 +68,7 @@ Secrets are redacted (`received: ***`) — a bad value never leaks into your log
 ## Install
 
 ```bash
-npm i envguard      # or: pnpm add envguard
+npm i prahari      # or: pnpm add prahari
 ```
 
 Requires Node 18+. Ships ESM + CJS with correct types for both.
@@ -76,13 +78,13 @@ Requires Node 18+. Ships ESM + CJS with correct types for both.
 ## The CLI — your `.env.example` can never drift again
 
 ```bash
-envguard example    # generate .env.example from your schema (descriptions → comments)
-envguard sync       # report drift between your schema and .env.example (exit 1 on drift)
-envguard doctor     # validate the current environment, red/green per variable
-envguard docs       # print a Markdown table of your variables (paste into your README)
+prahari example    # generate .env.example from your schema (descriptions → comments)
+prahari sync       # report drift between your schema and .env.example (exit 1 on drift)
+prahari doctor     # validate the current environment, red/green per variable
+prahari docs       # print a Markdown table of your variables (paste into your README)
 ```
 
-`envguard example` produces a documented template straight from your schema:
+`prahari example` produces a documented template straight from your schema:
 
 ```dotenv
 # Postgres connection string
@@ -96,7 +98,7 @@ PORT=3000
 STRIPE_KEY=
 ```
 
-Wire `envguard sync` into CI and a stale example file becomes a failing check, not a
+Wire `prahari sync` into CI and a stale example file becomes a failing check, not a
 lost afternoon for the next person who clones the repo.
 
 ---
@@ -123,7 +125,7 @@ your default / optional / required rules rather than silently coercing.
 
 ## Testing
 
-envguard is tested in **five layers**, because a type-safe library ships bugs in two places
+prahari is tested in **five layers**, because a type-safe library ships bugs in two places
 the classic unit/integration/e2e trio can't see — the *types* and the *published package*:
 
 1. **Unit** — validators + the coercion matrix

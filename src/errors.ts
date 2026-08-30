@@ -1,5 +1,5 @@
 /**
- * Error types for envguard.
+ * Error types for prahari.
  *
  * - `EnvFieldError` is thrown by a single validator when a raw value fails to
  *   coerce or violates a check. Its message is a *fragment* (e.g. "must be a

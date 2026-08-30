@@ -7,7 +7,7 @@
  * frozen, fully-typed env object.
  *
  * It also registers the schema (see `registry.ts`) so the CLI can introspect it,
- * and honors `ENVGUARD_SKIP_VALIDATION=1` — set by the CLI — to load a config
+ * and honors `PRAHARI_SKIP_VALIDATION=1` — set by the CLI — to load a config
  * module for its schema WITHOUT running validation or crashing.
  */
 
@@ -23,7 +23,7 @@ export interface DefineEnvOptions {
 
 function skipValidation(): boolean {
   return (
-    typeof process !== "undefined" && process.env?.ENVGUARD_SKIP_VALIDATION === "1"
+    typeof process !== "undefined" && process.env?.PRAHARI_SKIP_VALIDATION === "1"
   );
 }
 

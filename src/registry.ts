@@ -10,7 +10,7 @@
 
 import type { EnvSchema } from "./validators.js";
 
-const KEY = Symbol.for("envguard.registry.v1");
+const KEY = Symbol.for("prahari.registry.v1");
 
 interface RegistryStore {
   schemas: EnvSchema[];
