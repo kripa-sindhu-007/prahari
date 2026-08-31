@@ -3,6 +3,18 @@
 All notable changes to **prahari** are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] - 2026-08-31
+
+### Added
+- A marketing homepage at **https://prahari-azure.vercel.app** (source in
+  `site/`, Next.js, deployed on Vercel).
+
+### Changed
+- `homepage` now points to the site; added a website badge to the README.
+
+No changes to the runtime, the public API, or the CLI. Upgrading from `0.1.1`
+is a no-op for consumers.
+
 ## [0.1.1] - 2026-08-30
 
 ### Changed
@@ -27,5 +39,6 @@ Initial public release (published under the name `prahari`).
 - Dual ESM + CJS build with split type definitions; zero runtime dependencies
   for the library entry point.
 
+[0.1.2]: https://github.com/kripa-sindhu-007/prahari/releases/tag/v0.1.2
 [0.1.1]: https://github.com/kripa-sindhu-007/prahari/releases/tag/v0.1.1
 [0.1.0]: https://github.com/kripa-sindhu-007/prahari/releases/tag/v0.1.0

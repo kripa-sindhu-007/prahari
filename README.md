@@ -2,6 +2,7 @@
 
 *प्रहरी — "the sentinel." It stands watch over your environment config and refuses to let a misconfigured process past the gate.*
 
+[![website](https://img.shields.io/badge/website-prahari-22C55E.svg)](https://prahari-azure.vercel.app)
 [![CI](https://github.com/kripa-sindhu-007/prahari/actions/workflows/ci.yml/badge.svg)](https://github.com/kripa-sindhu-007/prahari/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/prahari.svg)](https://www.npmjs.com/package/prahari)
 [![coverage](https://img.shields.io/badge/coverage-%3E95%25-brightgreen.svg)](#testing)
