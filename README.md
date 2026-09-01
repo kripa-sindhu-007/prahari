@@ -6,7 +6,7 @@
 [![CI](https://github.com/kripa-sindhu-007/prahari/actions/workflows/ci.yml/badge.svg)](https://github.com/kripa-sindhu-007/prahari/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/prahari.svg)](https://www.npmjs.com/package/prahari)
 [![coverage](https://img.shields.io/badge/coverage-%3E95%25-brightgreen.svg)](#testing)
-[![types](https://img.shields.io/badge/types-included-blue.svg)](#)
+[![types](https://img.shields.io/badge/types-included-blue.svg)](https://arethetypeswrong.github.io/?p=prahari)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 > Type-safe, self-documenting environment variables for TypeScript — fail loudly at boot, and never let your `.env.example` drift from reality.

@@ -1,7 +1,7 @@
 {
   "name": "prahari",
-  "version": "0.2.0",
-  "description": "Type-safe, self-documenting environment variables for TypeScript — fail loudly at boot, and never let your .env.example drift from reality.",
+  "version": "0.3.0",
+  "description": "Type-safe env vars for TypeScript with a drift-proof CLI — validated at boot, bring your own Zod/Valibot/ArkType, plus Next.js & Vite server/client guards.",
   "type": "module",
   "license": "MIT",
   "author": "Kripa Sindhu",
@@ -26,7 +26,9 @@
     "standard-schema",
     "zod",
     "valibot",
-    "arktype"
+    "arktype",
+    "nextjs",
+    "vite"
   ],
   "engines": {
     "node": ">=18"

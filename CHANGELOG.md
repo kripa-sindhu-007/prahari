@@ -3,6 +3,30 @@
 All notable changes to **prahari** are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-09-01
+
+### Added
+- **Next.js adapter** (`prahari/next`) — `defineNextEnv({ server, client, runtimeEnv })`
+  enforces the server/client boundary: client keys must carry the `NEXT_PUBLIC_`
+  prefix (configurable), server keys must not, and reading a server-only variable
+  on the client throws instead of returning a silent `undefined`. Works with the
+  App Router and the Pages Router.
+- **Vite adapter** (`prahari/vite`) — `defineViteEnv({ server, client, runtimeEnv })`,
+  the same boundary wired to Vite's `VITE_` convention (`import.meta.env`).
+- Both adapters compose with the built-ins and any Standard Schema validator, and
+  share one internal split/guard core.
+
+### Changed
+- Documentation: a recipes guide (`docs/recipes.md`) and a `CONTRIBUTING.md`,
+  both linked from the README.
+- Testing: snapshot coverage for the boot report / `.env.example` / docs table,
+  and property-based (fast-check) coverage for the coercion invariants.
+- Refreshed the package description and keywords to cover the schema-agnostic and
+  framework-adapter capabilities.
+
+The runtime stays **zero-dependency** (the new adapters add no runtime deps; the
+extra libraries are test-only). Upgrading from `0.2.x` is backward-compatible.
+
 ## [0.2.0] - 2026-09-01
 
 ### Added
