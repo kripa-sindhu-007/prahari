@@ -67,6 +67,31 @@ Secrets are redacted (`received: ***`) — a bad value never leaks into your log
 
 ---
 
+## How it compares
+
+Env validators check types at boot. prahari does that too — then adds the layer they skip: a
+**CLI that keeps your `.env.example`, your docs, and your schema from drifting apart**, on top of a
+zero-dependency on-ramp.
+
+| | prahari | t3-env | envalid | znv | Zod (DIY) |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Typed, validated at boot | ✅ | ✅ | ✅ | ✅ | ⚠️ by hand |
+| One readable report of every failure | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Secret redaction in the report | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Zero-dependency built-in validators | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Bring your own schema (Zod / Valibot / ArkType) | ✅ | ✅ | ❌ | Zod only | ✅ |
+| **`.env.example` generation** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Drift detection (`prahari sync`)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Markdown docs generation (`prahari docs`)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Server/client boundary (Next.js, Vite) | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+Credit where due: [t3-env](https://env.t3.gg) pioneered the server/client split and, like prahari,
+builds on [Standard Schema](https://standardschema.dev). prahari's focus is the **tooling layer
+around** your env — generation, drift, and docs — with the built-ins as a zero-dependency default.
+See something inaccurate? [Open an issue](https://github.com/kripa-sindhu-007/prahari/issues).
+
+---
+
 ## Install
 
 ```bash
@@ -98,6 +123,19 @@ PORT=3000
 
 # (required, secret, string)
 STRIPE_KEY=
+```
+
+Add a variable to your schema, forget to update `.env.example`, and `prahari sync` says exactly
+what drifted (and exits non-zero):
+
+```console
+$ prahari sync
+✗ .env.example has drifted from your schema:
+
+  + STRIPE_KEY — in schema, missing from file
+  - LEGACY_FLAG — in file, not in schema
+
+Run `prahari example` to regenerate.
 ```
 
 Wire `prahari sync` into CI and a stale example file becomes a failing check, not a
