@@ -43,6 +43,9 @@
     "*": {
       "next": [
         "./dist/next.d.ts"
+      ],
+      "vite": [
+        "./dist/vite.d.ts"
       ]
     }
   },
@@ -66,6 +69,16 @@
       "require": {
         "types": "./dist/next.d.cts",
         "default": "./dist/next.cjs"
+      }
+    },
+    "./vite": {
+      "import": {
+        "types": "./dist/vite.d.ts",
+        "default": "./dist/vite.js"
+      },
+      "require": {
+        "types": "./dist/vite.d.cts",
+        "default": "./dist/vite.cjs"
       }
     },
     "./package.json": "./package.json"
