@@ -19,12 +19,16 @@ export function Hero() {
           </div>
 
           <h1 className="font-mono text-4xl font-bold leading-[1.08] tracking-tight text-ink sm:text-5xl">
-            Bad config never
+            Type-safe environment
             <br />
-            <span className="text-pass">gets past the gate.</span>
+            variables for TypeScript
           </h1>
 
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-soft">
+          <p className="mt-5 font-mono text-xl font-semibold text-ink-soft sm:text-2xl">
+            Bad config never <span className="text-pass">gets past the gate.</span>
+          </p>
+
+          <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-soft">
             <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-[0.9em] text-ink">
               process.env.*
             </code>{" "}
