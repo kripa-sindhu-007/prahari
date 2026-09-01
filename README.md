@@ -21,7 +21,7 @@ crashes at startup with a readable report — and gives you a CLI that keeps you
 - **Fails at boot, not in prod** — one readable table of everything that's wrong.
 - **Zero runtime dependencies** — the `import` pulls in nothing.
 - **Schema-agnostic** — bring your own [Standard Schema](https://standardschema.dev) validator (Zod/Valibot/ArkType) *or* use the built-ins.
-- **Next.js server/client boundary** — `prahari/next` keeps server secrets out of the browser bundle and throws if the boundary is crossed.
+- **Framework boundary guards** — `prahari/next` and `prahari/vite` keep server secrets out of the browser bundle and throw if the boundary is crossed.
 - **A CLI nobody else has** — `example`, `sync`, `doctor`: your `.env.example` can't drift.
 
 ---
@@ -199,6 +199,35 @@ which router serves it. Full usage for both lives in [`examples/next/env.ts`](ex
 > **Why `runtimeEnv`?** Next only inlines *static* `process.env.NEXT_PUBLIC_X` references; a
 > dynamic `process.env[key]` never reaches the browser. Listing each value explicitly is what
 > makes client vars actually available client-side.
+
+---
+
+## Vite — the same boundary, for `import.meta.env`
+
+`prahari/vite` is the same server/client guard, wired to Vite's convention: only `VITE_`-prefixed
+variables reach the browser (via `import.meta.env`, statically replaced at build time). Server
+values come from `process.env`; client values from `import.meta.env`.
+
+```ts
+// env.ts
+import { defineViteEnv } from "prahari/vite";
+import { str, url } from "prahari";
+
+export const env = defineViteEnv({
+  server: { DATABASE_URL: str(), SESSION_SECRET: str().secret() },
+  client: { VITE_API_URL: url() },
+  runtimeEnv: {
+    DATABASE_URL: process.env.DATABASE_URL,
+    SESSION_SECRET: process.env.SESSION_SECRET,
+    VITE_API_URL: import.meta.env.VITE_API_URL, // static → inlined into the client bundle
+  },
+  // isServer: import.meta.env.SSR,  // optional, for Vite SSR apps
+});
+```
+
+Same rules as the Next adapter: client keys must carry the prefix (`VITE_` by default; set
+`clientPrefix` to match a custom Vite `envPrefix`), server keys must not, and reading a server var
+on the client throws. Full example in [`examples/vite/env.ts`](examples/vite/env.ts).
 
 ---
 

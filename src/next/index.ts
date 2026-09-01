@@ -3,28 +3,17 @@
  *
  * Next.js only inlines `NEXT_PUBLIC_`-prefixed variables (referenced statically
  * as `process.env.NEXT_PUBLIC_X`) into the browser bundle; everything else is
- * server-only and is simply `undefined` on the client. That silent `undefined`
- * is where secrets leak and client vars mysteriously vanish. This adapter makes
- * the split explicit:
+ * server-only and simply `undefined` on the client. This adapter makes the
+ * split explicit: client keys must carry the prefix, server keys must not, and
+ * reading a server-only var on the client throws instead of silently returning
+ * `undefined`. Fields may be prahari built-ins or any Standard Schema validator.
  *
- *   - `client` keys MUST carry the public prefix (default `NEXT_PUBLIC_`);
- *   - `server` keys must NOT (a prefixed server key would be inlined = a leak);
- *   - on the server, both groups are validated; on the client, only client vars
- *     are validated (server values aren't there to validate);
- *   - the returned object is a Proxy that THROWS with a clear message if you
- *     read a server-only var on the client — turning a silent `undefined` into
- *     a loud failure.
- *
- * You pass an explicit `runtimeEnv` map (`{ NEXT_PUBLIC_X: process.env.NEXT_PUBLIC_X }`)
- * because Next only inlines *static* `process.env.X` references — a dynamic
- * lookup would never reach the browser. Fields may be prahari built-ins or any
- * Standard Schema validator (Zod / Valibot / ArkType).
- *
- * Works with both the App Router and the Pages Router — the boundary is about
- * where a value is read (server vs browser), not which router serves it.
+ * A thin wrapper over the shared `defineClientServerEnv` core. Works with both
+ * the App Router and the Pages Router — the boundary is about where a value is
+ * read (server vs browser), not which router serves it.
  */
 
-import { defineEnv } from "../core.js";
+import { defineClientServerEnv } from "../adapter.js";
 import type { EnvSchema, InferEnv } from "../validators.js";
 
 const DEFAULT_CLIENT_PREFIX = "NEXT_PUBLIC_";
@@ -64,55 +53,12 @@ export function defineNextEnv<
 >(
   options: DefineNextEnvOptions<Server, Client>,
 ): Readonly<InferEnv<Server> & InferEnv<Client>> {
-  const prefix = options.clientPrefix ?? DEFAULT_CLIENT_PREFIX;
-  const server = (options.server ?? {}) as EnvSchema;
-  const client = (options.client ?? {}) as EnvSchema;
-  // `window` isn't in this package's lib (it targets Node), so probe it via
-  // globalThis: present only in a browser → we're on the client.
-  const isServer =
-    options.isServer ??
-    typeof (globalThis as { window?: unknown }).window === "undefined";
-
-  // --- Config invariants (always checked; these are developer mistakes) ---
-  for (const key of Object.keys(client)) {
-    if (!key.startsWith(prefix)) {
-      throw new Error(
-        `prahari/next: client variable "${key}" must start with "${prefix}" ` +
-          `so Next.js exposes it to the browser. Rename it, or move it to \`server\`.`,
-      );
-    }
-  }
-  for (const key of Object.keys(server)) {
-    if (key.startsWith(prefix)) {
-      throw new Error(
-        `prahari/next: server variable "${key}" must NOT start with "${prefix}" — ` +
-          `Next.js would inline it into the client bundle, leaking it. Move it to \`client\`.`,
-      );
-    }
-  }
-
-  // --- Validate. On the client, server values aren't present, so validate
-  //     only the client group (validating absent server vars would throw in the
-  //     browser). On the server, validate both. The CLI always runs server-side
-  //     (isServer === true), so it registers and introspects the full schema. ---
-  const schema: EnvSchema = isServer ? { ...server, ...client } : client;
-  const parsed = defineEnv(schema, { source: options.runtimeEnv });
-
-  // --- Boundary guard: reading a server-only key on the client is a loud error,
-  //     not a silent `undefined`. ---
-  const serverKeys = new Set(Object.keys(server));
-  const guarded = new Proxy(parsed as Record<string, unknown>, {
-    get(target, prop) {
-      if (typeof prop === "string" && !isServer && serverKeys.has(prop)) {
-        throw new Error(
-          `prahari/next: attempted to read server-only variable "${prop}" on the client. ` +
-            `Server variables are never sent to the browser — read it in server code, ` +
-            `or expose a "${prefix}${prop}" client variable instead.`,
-        );
-      }
-      return Reflect.get(target, prop);
-    },
+  return defineClientServerEnv<Server, Client>({
+    server: options.server,
+    client: options.client,
+    runtimeEnv: options.runtimeEnv,
+    clientPrefix: options.clientPrefix ?? DEFAULT_CLIENT_PREFIX,
+    isServer: options.isServer,
+    adapter: "prahari/next",
   });
-
-  return guarded as Readonly<InferEnv<Server> & InferEnv<Client>>;
 }
