@@ -21,6 +21,7 @@ crashes at startup with a readable report — and gives you a CLI that keeps you
 - **Fails at boot, not in prod** — one readable table of everything that's wrong.
 - **Zero runtime dependencies** — the `import` pulls in nothing.
 - **Schema-agnostic** — bring your own [Standard Schema](https://standardschema.dev) validator (Zod/Valibot/ArkType) *or* use the built-ins.
+- **Next.js server/client boundary** — `prahari/next` keeps server secrets out of the browser bundle and throws if the boundary is crossed.
 - **A CLI nobody else has** — `example`, `sync`, `doctor`: your `.env.example` can't drift.
 
 ---
@@ -154,6 +155,50 @@ schema. Two things worth knowing:
   want redaction or richer `example` / `docs` output. Everything still *validates* either way.
 
 A runnable example lives in [`examples/standard-schema.ts`](examples/standard-schema.ts).
+
+---
+
+## Next.js — an enforced server/client boundary
+
+`prahari/next` splits your env into `server` and `client` groups and stops a server secret
+from ever reaching the browser. Next.js only inlines `NEXT_PUBLIC_`-prefixed variables into the
+client bundle — everything else is silently `undefined` on the client, which is exactly how
+secrets leak and client vars go missing. The adapter makes the split explicit and loud.
+
+```ts
+// env.ts
+import { defineNextEnv } from "prahari/next";
+import { str, url } from "prahari";
+import { z } from "zod"; // Standard Schema fields work here too
+
+export const env = defineNextEnv({
+  server: { DATABASE_URL: z.url(), STRIPE_SECRET_KEY: str().secret() },
+  client: { NEXT_PUBLIC_API_URL: url() },
+  // Static references so Next inlines the NEXT_PUBLIC_ ones into the browser bundle.
+  runtimeEnv: {
+    DATABASE_URL: process.env.DATABASE_URL,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+  },
+});
+```
+
+What it enforces:
+
+- **Client keys must carry the prefix** (`NEXT_PUBLIC_` by default, set `clientPrefix` to change)
+  — otherwise Next won't expose them and prahari throws a config error.
+- **Server keys must not** carry the prefix — a `NEXT_PUBLIC_`-named server var would be inlined
+  into the client bundle, so that's a config error too.
+- **Reading a server var on the client throws** a clear error instead of returning `undefined` —
+  turning a silent leak-shaped bug into a loud one. On the server, both groups are available.
+
+Import `env` everywhere instead of `process.env`. Works with the **App Router** and the
+**Pages Router** alike — the boundary is about *where a value is read* (server vs browser), not
+which router serves it. Full usage for both lives in [`examples/next/env.ts`](examples/next/env.ts).
+
+> **Why `runtimeEnv`?** Next only inlines *static* `process.env.NEXT_PUBLIC_X` references; a
+> dynamic `process.env[key]` never reaches the browser. Listing each value explicitly is what
+> makes client vars actually available client-side.
 
 ---
 
