@@ -20,7 +20,7 @@ crashes at startup with a readable report — and gives you a CLI that keeps you
 - **Type-safe** — `port()` → `number`, `oneOf([...])` → a literal union, all inferred.
 - **Fails at boot, not in prod** — one readable table of everything that's wrong.
 - **Zero runtime dependencies** — the `import` pulls in nothing.
-- **Schema-agnostic (planned)** — bring your own [Standard Schema](https://github.com/standard-schema/standard-schema) lib (Zod/Valibot/ArkType) *or* use the built-ins.
+- **Schema-agnostic** — bring your own [Standard Schema](https://standardschema.dev) validator (Zod/Valibot/ArkType) *or* use the built-ins.
 - **A CLI nobody else has** — `example`, `sync`, `doctor`: your `.env.example` can't drift.
 
 ---
@@ -124,6 +124,39 @@ your default / optional / required rules rather than silently coercing.
 
 ---
 
+## Bring your own schema (Zod / Valibot / ArkType)
+
+Already validate with Zod, Valibot, or ArkType? Use them directly — anything that implements
+[Standard Schema](https://standardschema.dev) works as a field, on its own or mixed with the
+built-ins. One schema library across your app; the built-ins remain the zero-dependency on-ramp.
+
+```ts
+import { defineEnv, port, standard } from "prahari";
+import { z } from "zod";
+
+export const env = defineEnv({
+  PORT: port().default(3000),          // built-in
+  REGION: z.enum(["us", "eu"]),        // bare Zod — inferred as "us" | "eu"
+  DATABASE_URL: z.url(),               // bare Zod
+  API_KEY: standard(z.string().startsWith("sk_"), { secret: true }), // wrapped → redacted
+});
+```
+
+Failures land in the same boot report as the built-ins; the output type is inferred from your
+schema. Two things worth knowing:
+
+- **Synchronous only.** `defineEnv` runs at import time, so an async schema (e.g. Zod's
+  `.refine(async …)`) throws a clear error instead of returning a promise. Env validation is
+  synchronous by design.
+- **Bare schemas carry no prahari metadata.** A raw `z.string()` can't tell prahari it's a
+  secret, or supply a `.env.example` placeholder — Standard Schema exposes no static
+  optional/default info. Wrap it with `standard(schema, { secret, desc, example })` when you
+  want redaction or richer `example` / `docs` output. Everything still *validates* either way.
+
+A runnable example lives in [`examples/standard-schema.ts`](examples/standard-schema.ts).
+
+---
+
 ## Testing
 
 prahari is tested in **five layers**, because a type-safe library ships bugs in two places
@@ -146,12 +179,6 @@ pnpm test:all      # everything
 Coverage sits above 95% on statements, branches, functions, and lines.
 
 ---
-
-## Roadmap
-
-v0.1 (this): built-in validators + `defineEnv` + the CLI.
-Next: Standard Schema interop (bring your own Zod/Valibot), then Next/Vite adapters with a
-client/server split + a `PUBLIC_` leak guard.
 
 ## What it isn't
 

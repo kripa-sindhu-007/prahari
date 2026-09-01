@@ -5,32 +5,34 @@
  * Pure renderer (unit-testable); the command wrapper does the IO.
  */
 
-import type { EnvSchema, Validator } from "../validators.js";
+import { describeField, type EnvSchema, type FieldDescriptor } from "../validators.js";
 
-function typeCell(v: Validator<unknown>): string {
-  const base = v.meta.enumValues
-    ? v.meta.enumValues.map((e) => `\`${e}\``).join(" \\| ")
-    : v.meta.typeName;
-  return v.meta.secret ? `${base} (secret)` : base;
+function typeCell(d: FieldDescriptor): string {
+  const base = d.enumValues
+    ? d.enumValues.map((e) => `\`${e}\``).join(" \\| ")
+    : d.typeName;
+  return d.secret ? `${base} (secret)` : base;
 }
 
-function requiredCell(v: Validator<unknown>): string {
-  return v.meta.optional || v.meta.hasDefault ? "no" : "yes";
+function requiredCell(d: FieldDescriptor): string {
+  // A bare Standard Schema owns its own optionality — prahari can't read it.
+  if (d.opaque) return "?";
+  return d.optional || d.hasDefault ? "no" : "yes";
 }
 
-function defaultCell(v: Validator<unknown>): string {
+function defaultCell(d: FieldDescriptor): string {
   // Never surface a default for a secret, even if one is declared.
-  if (v.meta.secret || !v.meta.hasDefault || v.meta.default === undefined) return "—";
-  const d = v.meta.default;
-  return `\`${typeof d === "string" ? d : JSON.stringify(d)}\``;
+  if (d.secret || !d.hasDefault || d.default === undefined) return "—";
+  const v = d.default;
+  return `\`${typeof v === "string" ? v : JSON.stringify(v)}\``;
 }
 
 /** Produce a Markdown table documenting a schema. */
 export function renderDocs(schema: EnvSchema): string {
   const rows = Object.keys(schema).map((key) => {
-    const v = schema[key] as Validator<unknown>;
-    const desc = v.meta.description ?? "";
-    return `| \`${key}\` | ${typeCell(v)} | ${requiredCell(v)} | ${defaultCell(v)} | ${desc} |`;
+    const d = describeField(schema[key]!);
+    const desc = d.description ?? "";
+    return `| \`${key}\` | ${typeCell(d)} | ${requiredCell(d)} | ${defaultCell(d)} | ${desc} |`;
   });
 
   return [

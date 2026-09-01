@@ -12,6 +12,20 @@ export const VERSION = "0.1.1";
 export { defineEnv } from "./core.js";
 export type { DefineEnvOptions } from "./core.js";
 export { str, num, port, bool, url, oneOf, json } from "./validators.js";
-export type { Validator, Infer, EnvSchema, InferEnv, ValidatorMeta } from "./validators.js";
+export { standard, isStandardSchema } from "./validators.js";
+export type {
+  Validator,
+  Infer,
+  EnvSchema,
+  InferEnv,
+  ValidatorMeta,
+  EnvField,
+  StandardSchemaV1,
+  StandardSchemaProps,
+  StandardResult,
+  StandardIssue,
+  StandardMeta,
+  InferStandard,
+} from "./validators.js";
 export { EnvFieldError, EnvValidationError, isEnvFieldError } from "./errors.js";
 export type { FieldFailure } from "./errors.js";

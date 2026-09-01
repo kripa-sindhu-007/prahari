@@ -45,11 +45,69 @@ export interface Validator<T> {
   exampleValue(): string;
 }
 
-/** Extract the output type of a validator. */
-export type Infer<V> = V extends Validator<infer T> ? T : never;
+// --------------------------------------------------------------------------
+// Standard Schema (https://standardschema.dev)
+//
+// Vendored, zero-dependency copy of the v1 interface — the spec's own
+// recommendation is to COPY the type, not depend on a package. Zod (>=3.24),
+// Valibot, ArkType and others expose their schemas through this `~standard`
+// property, so `defineEnv` can accept any of them as a field validator.
+// We call `validate(value)`; the real libraries' `(value, options?) => ...`
+// signature is structurally assignable to ours.
+// --------------------------------------------------------------------------
 
-/** A record of validators — the shape passed to `defineEnv`. */
-export type EnvSchema = Record<string, Validator<unknown>>;
+/** One issue reported by a Standard Schema validator. */
+export interface StandardIssue {
+  readonly message: string;
+  readonly path?: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }> | undefined;
+}
+
+/** Result of a Standard Schema `validate` call. */
+export type StandardResult<Output> =
+  | { readonly value: Output; readonly issues?: undefined }
+  | { readonly issues: ReadonlyArray<StandardIssue> };
+
+/** The `~standard` props object every Standard Schema validator exposes. */
+export interface StandardSchemaProps<Input = unknown, Output = Input> {
+  readonly version: 1;
+  readonly vendor: string;
+  readonly validate: (
+    value: unknown,
+  ) => StandardResult<Output> | Promise<StandardResult<Output>>;
+  readonly types?: { readonly input: Input; readonly output: Output } | undefined;
+}
+
+/** Any Standard-Schema-compatible validator (Zod / Valibot / ArkType / …). */
+export interface StandardSchemaV1<Input = unknown, Output = Input> {
+  readonly "~standard": StandardSchemaProps<Input, Output>;
+}
+
+/** Extract the output type of a Standard Schema validator. */
+export type InferStandard<S> =
+  S extends StandardSchemaV1<unknown, infer O> ? O : never;
+
+/** True if `x` is a Standard Schema validator (has a callable `~standard.validate`). */
+export function isStandardSchema(x: unknown): x is StandardSchemaV1 {
+  // ArkType exposes its schema as a *callable function* carrying `~standard`,
+  // so accept functions as well as plain objects.
+  if ((typeof x !== "object" && typeof x !== "function") || x === null) return false;
+  const std = (x as { "~standard"?: unknown })["~standard"];
+  return (
+    typeof std === "object" &&
+    std !== null &&
+    typeof (std as { validate?: unknown }).validate === "function"
+  );
+}
+
+/** A single field passed to `defineEnv` — a built-in validator or a Standard Schema. */
+export type EnvField = Validator<unknown> | StandardSchemaV1;
+
+/** Extract the output type of any field (built-in validator or Standard Schema). */
+export type Infer<V> =
+  V extends Validator<infer T> ? T : V extends StandardSchemaV1<unknown, infer O> ? O : never;
+
+/** A record of fields — the shape passed to `defineEnv`. */
+export type EnvSchema = Record<string, EnvField>;
 
 /** The typed env object inferred from a schema. */
 export type InferEnv<S extends EnvSchema> = {
@@ -339,4 +397,129 @@ export function oneOf<const T extends string>(values: readonly T[]): EnumValidat
 
 export function json<T = unknown>(): JsonValidator<T> {
   return new JsonValidator<T>();
+}
+
+// --------------------------------------------------------------------------
+// Standard Schema bridge
+// --------------------------------------------------------------------------
+
+/** Join a Standard Schema validator's issues into one report fragment. */
+export function formatStandardIssues(issues: ReadonlyArray<StandardIssue>): string {
+  const msgs = issues.map((i) => i.message).filter(Boolean);
+  return msgs.length > 0 ? msgs.join("; ") : "failed validation";
+}
+
+/** True for a thenable — a Standard Schema `validate` that resolved to a Promise. */
+export function isPromiseLike(x: unknown): x is Promise<unknown> {
+  return (
+    (typeof x === "object" || typeof x === "function") &&
+    x !== null &&
+    typeof (x as { then?: unknown }).then === "function"
+  );
+}
+
+/** Reason reported when a Standard Schema validator returns a Promise. */
+export const ASYNC_STANDARD_MESSAGE =
+  "returned a Promise — prahari validates synchronously; use a synchronous schema";
+
+/** Reason reported when a Standard Schema validator returns no result object. */
+export const NO_RESULT_STANDARD_MESSAGE = "validator returned no result";
+
+/** Extra prahari metadata to attach to a wrapped Standard Schema. */
+export interface StandardMeta {
+  /** Redact the value in the boot report and never write it to `.env.example`. */
+  secret?: boolean;
+  /** Human description for docs / `.env.example`. */
+  desc?: string;
+  /** Placeholder value for `.env.example`. */
+  example?: string;
+  /** Type label shown in the report and docs (defaults to the vendor, e.g. "zod"). */
+  typeName?: string;
+}
+
+/**
+ * Wrap a Standard Schema validator as a prahari `Validator`, attaching metadata
+ * so it participates fully in the boot report (with redaction), `.env.example`,
+ * and `docs`. Bare Standard Schemas also work in `defineEnv` — this wrapper is
+ * for when you want redaction or richer docs on a Zod/Valibot/ArkType field.
+ */
+export function standard<S extends StandardSchemaV1>(
+  schema: S,
+  meta: StandardMeta = {},
+): Validator<InferStandard<S>> {
+  type Out = InferStandard<S>;
+  const props = schema["~standard"];
+  const example = meta.example ?? "";
+  return {
+    typeName: meta.typeName ?? props.vendor,
+    meta: {
+      typeName: meta.typeName ?? props.vendor,
+      description: meta.desc,
+      secret: meta.secret ?? false,
+      optional: false,
+      hasDefault: false,
+    },
+    parse(raw: string | undefined): Out {
+      const result = props.validate(raw);
+      if (isPromiseLike(result)) throw new EnvFieldError(ASYNC_STANDARD_MESSAGE);
+      if (!result) throw new EnvFieldError(NO_RESULT_STANDARD_MESSAGE);
+      const sync = result as StandardResult<Out>;
+      if (sync.issues) throw new EnvFieldError(formatStandardIssues(sync.issues));
+      return sync.value;
+    },
+    exampleValue(): string {
+      return example;
+    },
+  };
+}
+
+// --------------------------------------------------------------------------
+// Introspection — a uniform descriptor for either kind of field, so the CLI
+// (`example`, `docs`) can render a schema that mixes built-ins and bare
+// Standard Schemas without special-casing at each call site.
+// --------------------------------------------------------------------------
+
+/** Normalized, render-ready view of a field. */
+export interface FieldDescriptor {
+  typeName: string;
+  description?: string;
+  secret: boolean;
+  optional: boolean;
+  hasDefault: boolean;
+  default?: unknown;
+  enumValues?: readonly string[];
+  /** `true` for a bare Standard Schema: prahari can't see optional/default/example. */
+  opaque: boolean;
+  exampleValue(): string;
+}
+
+/**
+ * Describe any field uniformly. Built-in validators (and `standard()` wrappers)
+ * expose full metadata; a BARE Standard Schema exposes only its vendor, so its
+ * descriptor is marked `opaque` and carries no optional/default/example.
+ */
+export function describeField(field: EnvField): FieldDescriptor {
+  if (isStandardSchema(field)) {
+    const vendor = field["~standard"].vendor;
+    return {
+      typeName: vendor,
+      secret: false,
+      optional: false,
+      hasDefault: false,
+      opaque: true,
+      exampleValue: () => "",
+    };
+  }
+  const v = field as Validator<unknown>;
+  return {
+    typeName: v.meta.typeName,
+    description: v.meta.description,
+    secret: v.meta.secret,
+    optional: v.meta.optional,
+    hasDefault: v.meta.hasDefault,
+    default: v.meta.default,
+    enumValues: v.meta.enumValues,
+    opaque: false,
+    exampleValue: () => v.exampleValue(),
+  };
 }

@@ -14,7 +14,17 @@
 import { EnvValidationError, isEnvFieldError, type FieldFailure } from "./errors.js";
 import { registerSchema } from "./registry.js";
 import { formatReport } from "./report.js";
-import type { EnvSchema, InferEnv, Validator } from "./validators.js";
+import {
+  ASYNC_STANDARD_MESSAGE,
+  formatStandardIssues,
+  isPromiseLike,
+  isStandardSchema,
+  NO_RESULT_STANDARD_MESSAGE,
+  type EnvSchema,
+  type InferEnv,
+  type StandardResult,
+  type Validator,
+} from "./validators.js";
 
 export interface DefineEnvOptions {
   /** Where to read raw values from. Defaults to `process.env`. */
@@ -55,8 +65,44 @@ export function defineEnv<S extends EnvSchema>(
   const failures: FieldFailure[] = [];
 
   for (const key of Object.keys(schema)) {
-    const validator = schema[key] as Validator<unknown>;
+    const field = schema[key];
     const raw = source[key];
+
+    // Bare Standard Schema (Zod / Valibot / ArkType) — no prahari metadata, so
+    // run its own `validate` and map any issues into the same aggregate report.
+    // Wrapped schemas (`standard(...)`) are plain Validators and take the path
+    // below. Every outcome is COLLECTED (never thrown mid-loop) so a single
+    // report still lists every failing variable.
+    if (isStandardSchema(field)) {
+      const props = field["~standard"];
+      const outcome = props.validate(raw);
+      // An async schema / malformed result is a developer error, not a config
+      // one; surface it in the report with no `received` (never leak a value).
+      if (isPromiseLike(outcome)) {
+        failures.push({ key, reason: ASYNC_STANDARD_MESSAGE, received: undefined, expected: props.vendor });
+        continue;
+      }
+      if (!outcome) {
+        failures.push({ key, reason: NO_RESULT_STANDARD_MESSAGE, received: undefined, expected: props.vendor });
+        continue;
+      }
+      const sync = outcome as StandardResult<unknown>;
+      if (sync.issues) {
+        // Bare Standard Schemas carry no `secret` marker — wrap with `standard()`
+        // to redact. See docs for the reasoning.
+        failures.push({
+          key,
+          reason: formatStandardIssues(sync.issues),
+          received: raw,
+          expected: props.vendor,
+        });
+      } else {
+        result[key] = sync.value;
+      }
+      continue;
+    }
+
+    const validator = field as Validator<unknown>;
     try {
       result[key] = validator.parse(raw);
     } catch (err) {
