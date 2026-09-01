@@ -231,6 +231,14 @@ on the client throws. Full example in [`examples/vite/env.ts`](examples/vite/env
 
 ---
 
+## Recipes
+
+Copy-pasteable patterns for the common cases — boot validation, bring-your-own-schema,
+the Next.js and Vite splits, sharing a base schema across a monorepo, testing code that
+reads env, CI drift-checking, and secrets — live in **[docs/recipes.md](docs/recipes.md)**.
+
+---
+
 ## Testing
 
 prahari is tested in **five layers**, because a type-safe library ships bugs in two places
@@ -258,6 +266,11 @@ Coverage sits above 95% on statements, branches, functions, and lines.
 
 Not a secrets manager (it validates what's in the environment; it doesn't fetch from
 Vault/Doppler). Validation runs at boot, not on hot-reload.
+
+## Contributing
+
+Issues and PRs are welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup (Node 22 +
+pnpm via corepack), the five-layer test suite, and the branch / release flow.
 
 ## License
 
