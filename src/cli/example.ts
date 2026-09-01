@@ -4,14 +4,17 @@
  * Pure renderer (unit-testable); the command wrapper does the file IO.
  */
 
-import type { EnvSchema, Validator } from "../validators.js";
+import { describeField, type EnvSchema, type FieldDescriptor } from "../validators.js";
 
-function tagsFor(v: Validator<unknown>): string {
+function tagsFor(d: FieldDescriptor): string {
   const tags: string[] = [];
-  tags.push(v.meta.optional ? "optional" : v.meta.hasDefault ? "has default" : "required");
-  if (v.meta.secret) tags.push("secret");
-  tags.push(v.meta.typeName);
-  if (v.meta.enumValues) tags.push(`one of: ${v.meta.enumValues.join(" | ")}`);
+  // A bare Standard Schema exposes no optional/default info — don't guess.
+  if (!d.opaque) {
+    tags.push(d.optional ? "optional" : d.hasDefault ? "has default" : "required");
+  }
+  if (d.secret) tags.push("secret");
+  tags.push(d.opaque ? `${d.typeName} (standard-schema)` : d.typeName);
+  if (d.enumValues) tags.push(`one of: ${d.enumValues.join(" | ")}`);
   return tags.join(", ");
 }
 
@@ -24,11 +27,11 @@ export function renderEnvExample(schema: EnvSchema): string {
   ];
 
   for (const key of Object.keys(schema)) {
-    const v = schema[key] as Validator<unknown>;
-    if (v.meta.description) lines.push(`# ${v.meta.description}`);
-    lines.push(`# (${tagsFor(v)})`);
+    const d = describeField(schema[key]!);
+    if (d.description) lines.push(`# ${d.description}`);
+    lines.push(`# (${tagsFor(d)})`);
     // Never write a real example for secrets — leave the value blank.
-    const value = v.meta.secret ? "" : v.exampleValue();
+    const value = d.secret ? "" : d.exampleValue();
     lines.push(`${key}=${value}`);
     lines.push("");
   }
