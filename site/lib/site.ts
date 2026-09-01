@@ -2,10 +2,11 @@ export const site = {
   name: "prahari",
   tagline: "The sentinel for your environment config.",
   devanagari: "प्रहरी",
+  url: "https://prahari-azure.vercel.app",
   repo: "https://github.com/kripa-sindhu-007/prahari",
   npm: "https://www.npmjs.com/package/prahari",
   install: "npm i prahari",
-  version: "0.1.1",
+  version: "0.3.0",
 };
 
 export type Validator = {
