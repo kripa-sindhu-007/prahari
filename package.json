@@ -1,6 +1,6 @@
 {
   "name": "prahari",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Type-safe, self-documenting environment variables for TypeScript — fail loudly at boot, and never let your .env.example drift from reality.",
   "type": "module",
   "license": "MIT",

@@ -7,7 +7,7 @@
  * `defineEnv` is the orchestrator; the `str/num/...` factories declare fields.
  */
 
-export const VERSION = "0.1.1";
+export const VERSION = "0.2.0";
 
 export { defineEnv } from "./core.js";
 export type { DefineEnvOptions } from "./core.js";

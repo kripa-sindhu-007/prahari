@@ -3,6 +3,34 @@
 All notable changes to **prahari** are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-09-01
+
+### Added
+- **Standard Schema support** — `defineEnv` now accepts any
+  [Standard Schema](https://standardschema.dev) validator (Zod, Valibot,
+  ArkType, …), on its own or mixed with the built-ins, and infers the output
+  type into the env object.
+- **`standard(schema, { secret, desc, example })`** wrapper — attaches prahari
+  metadata to a Standard Schema field so it is redacted in the boot report and
+  rendered fully by `prahari example` / `prahari docs`.
+- New exports: `standard`, `isStandardSchema`, and the types `StandardSchemaV1`,
+  `StandardSchemaProps`, `StandardResult`, `StandardIssue`, `StandardMeta`,
+  `EnvField`, `InferStandard`.
+- An `examples/standard-schema.ts` example and a README section.
+
+### Changed
+- Standard Schema failures fold into the same aggregate boot report (tagged
+  with the vendor); an async or malformed schema is surfaced as a clear
+  synchronous error and never leaks a value.
+- `prahari example` / `docs` render bare Standard Schema fields gracefully
+  (vendor tag; `?` where prahari cannot read optionality).
+- README no longer carries a roadmap — it reflects current, code-backed
+  capabilities only.
+
+The runtime stays **zero-dependency**: Zod / Valibot / ArkType are used only in
+tests. Upgrading from `0.1.x` is backward-compatible — all existing built-in
+validators and the CLI are unchanged.
+
 ## [0.1.2] - 2026-08-31
 
 ### Added
