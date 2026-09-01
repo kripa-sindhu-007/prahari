@@ -112,6 +112,7 @@
     "@types/node": "^22.10.0",
     "@vitest/coverage-v8": "^2.1.9",
     "arktype": "^2.2.3",
+    "fast-check": "^4.9.0",
     "publint": "^0.3.24",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2",
