@@ -846,6 +846,12 @@ export interface StandardMeta {
   example?: string;
   /** Type label shown in the report and docs (defaults to the vendor, e.g. "zod"). */
   typeName?: string;
+  /**
+   * Mark the variable deprecated, exactly as `.deprecated()` does on a built-in:
+   * it still validates, and warns when the variable is set. Pass a message
+   * naming the replacement, or `true` for the bare notice.
+   */
+  deprecated?: string | true;
 }
 
 /**
@@ -869,6 +875,10 @@ export function standard<S extends StandardSchemaV1>(
       secret: meta.secret ?? false,
       optional: false,
       hasDefault: false,
+      deprecated:
+        meta.deprecated === undefined
+          ? undefined
+          : { message: meta.deprecated === true ? undefined : meta.deprecated },
     },
     parse(raw: string | undefined): Out {
       const result = props.validate(raw);

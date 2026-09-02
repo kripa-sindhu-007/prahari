@@ -441,6 +441,8 @@ the Next.js and Vite splits, sharing a base schema across a monorepo, custom typ
 runtimes, testing code that reads env, CI drift-checking, and secrets — live in
 **[docs/recipes.md](docs/recipes.md)**.
 
+**[API reference](docs/api.md)** — the complete surface in one page.
+
 Deeper references: [composition](docs/composition.md) · [value sources](docs/sources.md) ·
 [custom types](docs/extensibility.md) · [`.env` files](docs/env-files.md) ·
 [warnings](docs/warnings.md) · [CI](docs/ci.md).

@@ -81,8 +81,18 @@ existing call signature changes, nothing is removed.
   and `safeParse` now returns `warnings: EnvWarning[]` on both branches. Nothing is
   emitted unless the schema asked for it. See `docs/warnings.md`.
 
+- **API reference** (#31) — `docs/api.md` records the complete public surface of all
+  four entry points, the three chaining rules, what is explicitly *not* public, and
+  what is deferred past 1.0. A test (`test/public-api.test.ts`) pins the export list
+  and the declared entry points, so a rename or an accidental export fails the build
+  instead of someone else's.
+- `standard()` accepts `deprecated` in its metadata, so a Zod/Valibot/ArkType field
+  can be deprecated exactly like a built-in.
+
 ### Changed
 - Coverage threshold raised from 95% to 97% on all four metrics.
+- `VERSION` is now checked against `package.json` by a test — two sources of truth
+  for the version was one too many.
 - CI/release workflows: `actions/checkout@v5`, `actions/setup-node@v5`,
   `actions/upload-artifact@v7` and `actions/download-artifact@v8` — the `@v4` line
   targets Node 20, which GitHub has deprecated on its runners.

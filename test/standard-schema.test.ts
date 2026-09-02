@@ -13,6 +13,7 @@ import {
 } from "../src/index";
 import { renderEnvExample } from "../src/cli/example";
 import { renderDocs } from "../src/cli/docs";
+import { describeField } from "../src/validators";
 import { clearRegistry } from "../src/registry";
 
 beforeEach(() => {
@@ -209,5 +210,27 @@ describe("standard() example placeholder", () => {
       "sk_live_123",
     );
     expect(standard(z.string()).exampleValue()).toBe("");
+  });
+});
+
+describe("standard() deprecation", () => {
+  it("marks a Standard Schema field deprecated, with and without a message", () => {
+    const withMessage = standard(z.string(), { deprecated: "use API_URL" });
+    const bare = standard(z.string(), { deprecated: true });
+    expect(describeField(withMessage).deprecated).toBe(true);
+    expect(describeField(withMessage).deprecationMessage).toBe("use API_URL");
+    expect(describeField(bare).deprecated).toBe(true);
+    expect(describeField(bare).deprecationMessage).toBeUndefined();
+    expect(describeField(standard(z.string())).deprecated).toBe(false);
+  });
+
+  it("warns at boot, and still validates", () => {
+    const warnings: string[] = [];
+    const env = defineEnv(
+      { OLD: standard(z.string(), { deprecated: "use NEW" }) },
+      { source: { OLD: "value" }, onWarn: (w) => warnings.push(w.message) },
+    );
+    expect(env.OLD).toBe("value");
+    expect(warnings).toEqual(["OLD is deprecated — use NEW"]);
   });
 });

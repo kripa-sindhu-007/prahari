@@ -111,5 +111,12 @@ str().default("a,b").transform((s) => s.split(","))
 | A built-in validates it, but you want a different shape | `.transform()` |
 | Rich object/array schemas, unions, refinements you already write in Zod | [Standard Schema](../README.md#bring-your-own-schema-zod--valibot--arktype) |
 
+A `standard()`-wrapped Standard Schema takes the same metadata as a built-in,
+including deprecation:
+
+```ts
+OLD_REGION: standard(z.enum(["us", "eu"]), { deprecated: "use REGION", secret: false }),
+```
+
 `custom()` and `.transform()` keep the `.` entry **zero-dependency** — that's
 what they exist for. If you already have Zod in the project, use Zod.
