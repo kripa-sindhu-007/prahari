@@ -48,6 +48,9 @@
       ],
       "vite": [
         "./dist/vite.d.ts"
+      ],
+      "env-file": [
+        "./dist/env-file.d.ts"
       ]
     }
   },
@@ -81,6 +84,16 @@
       "require": {
         "types": "./dist/vite.d.cts",
         "default": "./dist/vite.cjs"
+      }
+    },
+    "./env-file": {
+      "import": {
+        "types": "./dist/env-file.d.ts",
+        "default": "./dist/env-file.js"
+      },
+      "require": {
+        "types": "./dist/env-file.d.cts",
+        "default": "./dist/env-file.cjs"
       }
     },
     "./package.json": "./package.json"

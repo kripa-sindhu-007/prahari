@@ -7,6 +7,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
+import { loadEnvFiles } from "../env-file/index.js";
 import { formatReport } from "../report.js";
 import { renderEnvExample } from "./example.js";
 import { renderDocs } from "./docs.js";
@@ -41,6 +42,7 @@ ${bold("Options:")}
   -f, --file <path>     env file to compare (sync; default: .env.example)
   -o, --out <path>      output file (example: default .env.example; docs: stdout)
       --stdout          print to stdout instead of writing a file (example)
+      --env-file <path> also read this .env file (doctor; real env still wins)
   -h, --help            show this help
 `;
 
@@ -136,7 +138,22 @@ async function cmdDocs(io: RunIO, values: Record<string, unknown>): Promise<numb
 
 async function cmdDoctor(io: RunIO, values: Record<string, unknown>): Promise<number> {
   const { schema } = await getSchema(io, values.config as string | undefined);
-  const { ok, failures } = runDoctor(schema, io.env ?? process.env);
+  const base = io.env ?? process.env;
+  const envFile = values["env-file"] as string | undefined;
+
+  let source = base;
+  if (envFile !== undefined) {
+    const path = resolve(io.cwd, envFile);
+    if (!existsSync(path)) {
+      throw new CliError(`env file not found: ${bold(relative(io.cwd, path))}`);
+    }
+    // The real environment still wins over the file — validate what the process
+    // would actually see if it booted here.
+    source = loadEnvFiles(path, { base, cwd: io.cwd });
+    io.stdout(`${dim(`(against ${relative(io.cwd, path)} + the current environment)`)}\n`);
+  }
+
+  const { ok, failures } = runDoctor(schema, source);
 
   for (const key of ok) io.stdout(`  ${tick} ${key}\n`);
 
@@ -159,6 +176,7 @@ export async function run(argv: string[], io: RunIO): Promise<number> {
         file: { type: "string", short: "f" },
         out: { type: "string", short: "o" },
         stdout: { type: "boolean" },
+        "env-file": { type: "string" },
         help: { type: "boolean", short: "h" },
       },
     });

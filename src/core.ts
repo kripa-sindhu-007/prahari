@@ -18,6 +18,7 @@ import { formatReport } from "./report.js";
 import { normalizeSchema, type SchemaInput } from "./schema.js";
 import {
   ASYNC_STANDARD_MESSAGE,
+  conditionalFailure,
   formatStandardIssues,
   isPromiseLike,
   isStandardSchema,
@@ -155,6 +156,25 @@ function run<S extends EnvSchema>(
         throw err;
       }
     }
+  }
+
+  // --- Second pass: conditional requirements (`.requiredWhen` / `.requiredIn`).
+  //     These are the only rules that depend on OTHER variables, so they can
+  //     only be judged once the rest of the environment has resolved. A schema
+  //     with no conditional field never enters this loop. ---
+  for (const key of Object.keys(schema)) {
+    // Present, or already reported — nothing conditional left to decide.
+    if (result[key] !== undefined) continue;
+    if (failures.some((f) => f.key === key)) continue;
+    const failure = conditionalFailure(key, schema[key]!, result);
+    if (failure) failures.push(failure);
+  }
+
+  // Keep the report in schema order even though conditional failures are found
+  // in a later pass — the reader is scanning against their own env file.
+  if (failures.length > 1) {
+    const order = Object.keys(schema);
+    failures.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
   }
 
   return { data: Object.freeze(result) as Readonly<InferEnv<S>>, failures };

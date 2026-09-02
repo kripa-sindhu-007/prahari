@@ -154,10 +154,13 @@ lost afternoon for the next person who clones the repo.
 | `url()` | `string` | valid URL, `.protocol("https")` |
 | `oneOf([...])` | union | narrows to the literal union |
 | `json<T>()` | `T` | `JSON.parse` |
+| `list()` | `string[]` | `a,b,c` → `["a","b","c"]`; `.of(port())` types + validates items, `.separator(";")` |
+| `duration()` | `number` | `30s` `500ms` `2h` `1d` → milliseconds |
+| `bytes()` | `number` | `10mb` `64kb` `2gb` → bytes (1 kb = 1024) |
 | `custom<T>(fn)` | `T` | your function, zero dependencies — throw to fail |
 
 Shared modifiers: `.default(value)` · `.optional()` · `.desc(text)` · `.secret()` ·
-`.transform(fn)`.
+`.transform(fn)` · `.requiredWhen(fn)` / `.requiredIn("production")`.
 
 **Defaults are typed values, not re-parsed strings** — `.default(3000)` is the number `3000`,
 full stop. And an explicitly empty env var (`FOO=`) counts as **unset**, so it flows through
@@ -178,6 +181,34 @@ const env = defineEnv({
 
 The thrown message becomes that variable's row in the same boot report as everything else.
 Details: [docs/extensibility.md](docs/extensibility.md).
+
+---
+
+## Required in production, optional locally
+
+The variable that only matters in one environment, without a second schema or a
+hand-rolled `if`:
+
+```ts
+export const env = defineEnv({
+  NODE_ENV:   oneOf(["development", "production", "test"]).default("development"),
+  STRIPE_KEY: str().secret().requiredIn("production"),
+  SENTRY_DSN: url().requiredWhen((env) => env.NODE_ENV !== "development"),
+});
+```
+
+```
+✗ Invalid environment configuration
+
+  STRIPE_KEY   is required when NODE_ENV is production   (expected: string)
+```
+
+The predicate runs after every other variable resolves, so it can read them —
+`.requiredWhen((env) => env.BILLING_ENABLED === true)` works just as well. The
+type becomes `string | undefined`: TypeScript can't know which environment you'll
+boot in, and pretending otherwise would be a lie. `prahari docs` and
+`.env.example` both say *required when NODE_ENV is production* rather than
+"optional", and `prahari doctor` judges the condition exactly the way boot does.
 
 ---
 
@@ -235,6 +266,24 @@ defineEnv(schema, { source: { get: (k) => myStore.read(k) } }); // your own reso
 On a runtime with no `process` at all, prahari reports missing variables normally instead of
 dying with `ReferenceError: process is not defined`. Details, including why sources are
 synchronous: [docs/sources.md](docs/sources.md).
+
+### `.env` files
+
+prahari validates the environment; it doesn't load it — unless you ask. Node's `--env-file`,
+`dotenv`, and your platform's injected variables all work unchanged. If you'd rather not add a
+second tool, there's an opt-in loader:
+
+```ts
+import { loadEnvFiles } from "prahari/env-file";
+
+export const env = defineEnv(schema, { source: loadEnvFiles([".env.local", ".env"]) });
+```
+
+`process.env` wins over the files, earlier files win over later ones, and nothing mutates
+`process.env` unless you turn it on. It lives at `prahari/env-file` rather than the main entry
+because it needs `node:fs` — which must never reach a bundle destined for the browser or an
+edge runtime. `prahari doctor --env-file .env` validates a file the same way. Full stance and
+syntax: [docs/env-files.md](docs/env-files.md).
 
 ---
 
@@ -352,7 +401,7 @@ runtimes, testing code that reads env, CI drift-checking, and secrets — live i
 **[docs/recipes.md](docs/recipes.md)**.
 
 Deeper references: [composition](docs/composition.md) · [value sources](docs/sources.md) ·
-[custom types](docs/extensibility.md).
+[custom types](docs/extensibility.md) · [`.env` files](docs/env-files.md).
 
 ---
 
@@ -382,7 +431,8 @@ Coverage sits above 97% on statements, branches, functions, and lines.
 ## What it isn't
 
 Not a secrets manager (it validates what's in the environment; it doesn't fetch from
-Vault/Doppler). Validation runs at boot, not on hot-reload.
+Vault/Doppler). Not a replacement for `dotenv` or `--env-file` — loading is opt-in and
+separate ([the stance](docs/env-files.md)). Validation runs at boot, not on hot-reload.
 
 ## Contributing
 

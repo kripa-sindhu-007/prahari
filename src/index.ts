@@ -13,9 +13,22 @@ export { defineEnv, safeParse } from "./core.js";
 export type { DefineEnvOptions, EnvSource, SafeParseResult } from "./core.js";
 export { defineSchema, isComposedSchema } from "./schema.js";
 export type { ComposedSchema, MergeSchemas, SchemaInput } from "./schema.js";
-export { str, num, port, bool, url, oneOf, json, custom } from "./validators.js";
+export {
+  str,
+  num,
+  port,
+  bool,
+  url,
+  oneOf,
+  json,
+  custom,
+  list,
+  duration,
+  bytes,
+} from "./validators.js";
 export { standard, isStandardSchema } from "./validators.js";
 export type {
+  ConditionalRequirement,
   CustomMeta,
   DerivedValidator,
   Validator,
