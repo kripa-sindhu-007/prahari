@@ -83,9 +83,9 @@ existing call signature changes, nothing is removed.
 
 ### Changed
 - Coverage threshold raised from 95% to 97% on all four metrics.
-- CI/release workflows: `actions/checkout`, `actions/setup-node`,
-  `actions/upload-artifact` and `actions/download-artifact` bumped to `@v5` — the
-  `@v4` line targets Node 20, which GitHub has deprecated on its runners.
+- CI/release workflows: `actions/checkout@v5`, `actions/setup-node@v5`,
+  `actions/upload-artifact@v7` and `actions/download-artifact@v8` — the `@v4` line
+  targets Node 20, which GitHub has deprecated on its runners.
 
 ## [0.3.0] - 2026-09-01
 
