@@ -3,10 +3,19 @@
 All notable changes to **prahari** are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## [1.0.0] - 2026-09-02
 
-The v1.0 core API surface. Everything here is **backward-compatible** — no
-existing call signature changes, nothing is removed.
+**The API is now stable.** Everything documented in `docs/api.md` is frozen:
+additions will be minor releases, and anything removed or renamed would be a
+major one. Two tests pin that promise — one over the runtime exports, one over
+the exported types — so a rename fails prahari's build rather than yours.
+
+Upgrading from `0.3.x` is **backward-compatible**. No existing call signature
+changed and nothing was removed; everything below is new surface.
+
+The runtime entry stays **zero-dependency** and runs anywhere, including edge
+runtimes with no `process`. `.env` loading lives behind its own entry point
+(`prahari/env-file`) precisely so that stays true.
 
 ### Added
 - **Composable schemas** (#5) — `defineSchema(fields)` returns a schema with
@@ -185,6 +194,9 @@ Initial public release (published under the name `prahari`).
 - Dual ESM + CJS build with split type definitions; zero runtime dependencies
   for the library entry point.
 
+[1.0.0]: https://github.com/kripa-sindhu-007/prahari/releases/tag/v1.0.0
+[0.3.0]: https://github.com/kripa-sindhu-007/prahari/releases/tag/v0.3.0
+[0.2.0]: https://github.com/kripa-sindhu-007/prahari/releases/tag/v0.2.0
 [0.1.2]: https://github.com/kripa-sindhu-007/prahari/releases/tag/v0.1.2
 [0.1.1]: https://github.com/kripa-sindhu-007/prahari/releases/tag/v0.1.1
 [0.1.0]: https://github.com/kripa-sindhu-007/prahari/releases/tag/v0.1.0
