@@ -20,10 +20,18 @@
 
 import { URL } from "node:url";
 
-import { EnvFieldError, isEnvFieldError } from "./errors.js";
+import { EnvFieldError, isEnvFieldError, type FieldFailure } from "./errors.js";
 
 const TRUTHY = new Set(["1", "true", "yes", "on"]);
 const FALSEY = new Set(["0", "false", "no", "off"]);
+
+/** A requirement that depends on the rest of the environment (see `.requiredWhen`). */
+export interface ConditionalRequirement {
+  /** Receives the already-resolved env. `true` → the variable is required. */
+  predicate: (env: Record<string, unknown>) => boolean;
+  /** Human phrasing for the report, e.g. `NODE_ENV is production`. */
+  label?: string;
+}
 
 export interface ValidatorMeta<T> {
   typeName: string;
@@ -33,6 +41,8 @@ export interface ValidatorMeta<T> {
   hasDefault: boolean;
   default?: T;
   enumValues?: readonly string[];
+  /** Set by `.requiredWhen()` / `.requiredIn()`; evaluated by the core's second pass. */
+  requiredWhen?: ConditionalRequirement;
 }
 
 /** Public shape of any validator. */
@@ -177,6 +187,45 @@ abstract class BaseValidator<T> implements Validator<T> {
   optional(): Validator<T | undefined> {
     this.meta.optional = true;
     return this as unknown as Validator<T | undefined>;
+  }
+
+  /**
+   * Require this variable only when a predicate over the REST of the environment
+   * says so — `STRIPE_KEY` required in production, optional locally.
+   *
+   * The predicate runs after every other variable has resolved, so it can read
+   * them. The type widens to `T | undefined`: TypeScript cannot know which
+   * environment you will boot in, and pretending otherwise would be a lie.
+   *
+   * ```ts
+   * STRIPE_KEY: str().secret().requiredWhen(
+   *   (env) => env.NODE_ENV === "production",
+   *   "NODE_ENV is production",
+   * ),
+   * ```
+   */
+  requiredWhen(
+    predicate: (env: Record<string, unknown>) => boolean,
+    label?: string,
+  ): Validator<T | undefined> {
+    this.meta.requiredWhen = { predicate, label };
+    // The first pass must resolve this field to `undefined` rather than failing;
+    // the core's second pass decides whether that absence is actually an error.
+    this.meta.optional = true;
+    return this as unknown as Validator<T | undefined>;
+  }
+
+  /**
+   * Sugar for the common case: required when `NODE_ENV` is one of these. Reads
+   * the schema's own `NODE_ENV` variable — use `requiredWhen` for anything else
+   * (a differently-named stage variable, a feature flag, "unless X is set").
+   */
+  requiredIn(...environments: string[]): Validator<T | undefined> {
+    const label = `NODE_ENV is ${environments.join(" or ")}`;
+    return this.requiredWhen(
+      (env) => typeof env.NODE_ENV === "string" && environments.includes(env.NODE_ENV),
+      label,
+    );
   }
 
   /**
@@ -414,6 +463,187 @@ class PortValidator extends NumberValidator {
 }
 
 // --------------------------------------------------------------------------
+// duration / bytes — env-shaped coercions onto a plain `number`
+// --------------------------------------------------------------------------
+
+const DURATION_UNITS: Record<string, number> = {
+  ms: 1,
+  s: 1000,
+  m: 60_000,
+  h: 3_600_000,
+  d: 86_400_000,
+};
+
+/**
+ * Byte units. `kb`/`mb`/… are powers of **1024**, identical to `kib`/`mib`/… —
+ * the convention every config format uses (and what `MAX_UPLOAD=10mb` means to
+ * the person who typed it), even though SI says otherwise. Documented, not
+ * silent.
+ */
+const BYTE_UNITS: Record<string, number> = {
+  b: 1,
+  kb: 1024,
+  kib: 1024,
+  mb: 1024 ** 2,
+  mib: 1024 ** 2,
+  gb: 1024 ** 3,
+  gib: 1024 ** 3,
+  tb: 1024 ** 4,
+  tib: 1024 ** 4,
+};
+
+/** Shared parser for "<number><unit>" with an implicit unit for a bare number. */
+function coerceUnit(
+  raw: string,
+  units: Record<string, number>,
+  bareUnit: string,
+  expected: string,
+): number {
+  const t = raw.trim().toLowerCase();
+  const match = /^(\d+(?:\.\d+)?)\s*([a-z]*)$/.exec(t);
+  if (!match) throw new EnvFieldError(expected);
+  const unit = match[2] === "" ? bareUnit : match[2]!;
+  const factor = units[unit];
+  if (factor === undefined) throw new EnvFieldError(expected);
+  return Number(match[1]) * factor;
+}
+
+class DurationValidator extends NumberValidator {
+  override readonly typeName: string = "duration";
+  constructor() {
+    super();
+    this.meta.typeName = "duration";
+  }
+  protected override coerce(raw: string): number {
+    return coerceUnit(
+      raw,
+      DURATION_UNITS,
+      "ms",
+      "must be a duration like 30s, 500ms, 2h or 1d (a bare number is milliseconds)",
+    );
+  }
+  protected override placeholder(): string {
+    return "30s";
+  }
+}
+
+class BytesValidator extends NumberValidator {
+  override readonly typeName: string = "bytes";
+  constructor() {
+    super();
+    this.meta.typeName = "bytes";
+  }
+  protected override coerce(raw: string): number {
+    return coerceUnit(
+      raw,
+      BYTE_UNITS,
+      "b",
+      "must be a size like 512b, 64kb, 10mb or 2gb (a bare number is bytes)",
+    );
+  }
+  protected override placeholder(): string {
+    return "10mb";
+  }
+}
+
+// --------------------------------------------------------------------------
+// list
+// --------------------------------------------------------------------------
+
+class ListValidator<T> extends BaseValidator<T[]> {
+  readonly typeName = "list";
+  private separatorChar = ",";
+  private readonly inner?: Validator<T>;
+
+  constructor(inner?: Validator<T>) {
+    super();
+    this.meta.typeName = "list";
+    this.inner = inner;
+  }
+
+  protected coerce(raw: string): T[] {
+    const items = raw
+      .split(this.separatorChar)
+      .map((item) => item.trim())
+      .filter((item) => item !== "");
+
+    if (!this.inner) return items as unknown as T[];
+
+    // Report EVERY bad element, not just the first — same principle as the
+    // aggregate boot report, one level down.
+    const values: T[] = [];
+    const problems: string[] = [];
+    items.forEach((item, index) => {
+      try {
+        values.push(this.inner!.parse(item));
+      } catch (err) {
+        if (isEnvFieldError(err)) problems.push(`item ${index + 1} ("${item}") ${err.message}`);
+        else throw err;
+      }
+    });
+    if (problems.length > 0) throw new EnvFieldError(problems.join("; "));
+    return values;
+  }
+
+  protected override placeholder(): string {
+    return this.inner
+      ? this.inner.exampleValue()
+      : ["a", "b", "c"].join(this.separatorChar);
+  }
+
+  override exampleValue(): string {
+    // A `.env` holds the RAW, delimited form — the base implementation would
+    // JSON-stringify the typed default, and `ORIGINS=["a","b"]` parses back as a
+    // single item. The generated file has to round-trip.
+    const value = this.meta.default;
+    if (this.meta.hasDefault && Array.isArray(value)) {
+      return value
+        .map((item) => (typeof item === "string" ? item : JSON.stringify(item)))
+        .join(this.separatorChar);
+    }
+    return super.exampleValue();
+  }
+
+  /** Validate each item with another validator, re-typing the list. */
+  of<U>(inner: Validator<U>): ListValidator<U> {
+    if (this.meta.hasDefault || this.meta.optional || this.checks.length > 0) {
+      throw new Error(
+        "prahari: call .of() before .default()/.optional()/.min()/.max() — " +
+          "it re-types the list, so anything declared earlier would be typed wrong.",
+      );
+    }
+    const list = new ListValidator<U>(inner);
+    list.separatorChar = this.separatorChar;
+    list.meta.description = this.meta.description;
+    list.meta.secret = this.meta.secret;
+    return list;
+  }
+
+  /** Split on something other than a comma. */
+  separator(separator: string): this {
+    if (separator === "") throw new Error("prahari: .separator() cannot be empty");
+    this.separatorChar = separator;
+    return this;
+  }
+
+  /** Minimum number of items. */
+  min(count: number): this {
+    this.checks.push((v) => {
+      if (v.length < count) throw new EnvFieldError(`must have at least ${count} item(s)`);
+    });
+    return this;
+  }
+
+  /** Maximum number of items. */
+  max(count: number): this {
+    this.checks.push((v) => {
+      if (v.length > count) throw new EnvFieldError(`must have at most ${count} item(s)`);
+    });
+    return this;
+  }
+}
+
+// --------------------------------------------------------------------------
 // boolean
 // --------------------------------------------------------------------------
 
@@ -541,6 +771,28 @@ export function json<T = unknown>(): JsonValidator<T> {
   return new JsonValidator<T>();
 }
 
+/** A duration in **milliseconds**: `30s`, `500ms`, `2h`, `1d`, or a bare number of ms. */
+export function duration(): DurationValidator {
+  return new DurationValidator();
+}
+
+/** A size in **bytes**: `512b`, `64kb`, `10mb`, `2gb` (1 kb = 1024), or a bare number. */
+export function bytes(): BytesValidator {
+  return new BytesValidator();
+}
+
+/**
+ * A delimited list: `ORIGINS=a,b,c` → `["a", "b", "c"]`.
+ *
+ * `.of(validator)` validates and types each item; `.separator(";")` splits on
+ * something else. Items are trimmed and empty items dropped, so `a, b,` is two
+ * items. An empty variable (`ORIGINS=`) is *unset* — it follows your
+ * default/optional/required rules rather than silently becoming `[]`.
+ */
+export function list(): ListValidator<string> {
+  return new ListValidator<string>();
+}
+
 // --------------------------------------------------------------------------
 // Standard Schema bridge
 // --------------------------------------------------------------------------
@@ -632,7 +884,52 @@ export interface FieldDescriptor {
   enumValues?: readonly string[];
   /** `true` for a bare Standard Schema: prahari can't see optional/default/example. */
   opaque: boolean;
+  /** `true` when the field is required only under a condition (`.requiredWhen`). */
+  conditional: boolean;
+  /** Human phrasing of that condition, when one was supplied. */
+  conditionLabel?: string;
   exampleValue(): string;
+}
+
+/**
+ * Judge one conditional requirement (`.requiredWhen` / `.requiredIn`) against an
+ * already-resolved environment, returning a failure when the variable turns out
+ * to have been required after all.
+ *
+ * Shared by `defineEnv`'s second pass and `prahari doctor`, so the boot report
+ * and the CLI can never disagree about whether a variable was required.
+ */
+export function conditionalFailure(
+  key: string,
+  field: EnvField,
+  resolved: Record<string, unknown>,
+): FieldFailure | undefined {
+  if (isStandardSchema(field)) return undefined;
+  const validator = field as Validator<unknown>;
+  const condition = validator.meta.requiredWhen;
+  if (!condition) return undefined;
+
+  try {
+    if (!condition.predicate(resolved)) return undefined;
+  } catch (err) {
+    // A throwing predicate is a bug in the condition, not in the config — but it
+    // is still reported rather than crashing, matching custom()/.transform().
+    return {
+      key,
+      reason: `conditional requirement threw: ${err instanceof Error ? err.message : String(err)}`,
+      received: undefined,
+      expected: validator.meta.typeName,
+    };
+  }
+
+  return {
+    key,
+    reason: condition.label
+      ? `is required when ${condition.label}`
+      : "is required under the declared condition",
+    received: undefined,
+    expected: validator.meta.typeName,
+  };
 }
 
 /**
@@ -649,6 +946,7 @@ export function describeField(field: EnvField): FieldDescriptor {
       optional: false,
       hasDefault: false,
       opaque: true,
+      conditional: false,
       exampleValue: () => "",
     };
   }
@@ -662,6 +960,8 @@ export function describeField(field: EnvField): FieldDescriptor {
     default: v.meta.default,
     enumValues: v.meta.enumValues,
     opaque: false,
+    conditional: v.meta.requiredWhen !== undefined,
+    conditionLabel: v.meta.requiredWhen?.label,
     exampleValue: () => v.exampleValue(),
   };
 }

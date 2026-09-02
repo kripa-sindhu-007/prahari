@@ -37,6 +37,30 @@ existing call signature changes, nothing is removed.
   throwing `ReferenceError: process is not defined` — the runtime this feature
   exists to serve was the one it crashed on.
 
+- **`list()`** (#23) — a delimited value into a typed array: `ORIGINS=a,b,c` →
+  `string[]`. `.of(port())` validates and types each item (reporting *every* bad
+  element, with its index), `.separator(";")` splits on something else, and
+  `.min()/.max()` bound the item count. Items are trimmed and empty ones dropped;
+  an empty variable stays *unset* rather than silently becoming `[]`.
+- **`duration()` and `bytes()`** (#28) — `TIMEOUT=30s` → `30000` milliseconds,
+  `MAX_UPLOAD=10mb` → `10485760` bytes. Both are plain `number`s and compose with
+  `.int()/.min()/.max()`. `kb`/`mb`/`gb` are powers of **1024** (identical to
+  `kib`/`mib`/`gib`) — the config-file convention, documented rather than assumed.
+- **Conditional requirements** (#27) — `.requiredIn("production")` and
+  `.requiredWhen((env) => …)` for a variable that is required only sometimes. The
+  predicate runs after the rest of the environment resolves, so it can read other
+  variables; the report says `is required when NODE_ENV is production`; the type
+  widens to `T | undefined` because TypeScript cannot know the runtime
+  environment. `prahari docs`, `.env.example` and `prahari doctor` all understand
+  the condition and share one evaluator with `defineEnv`.
+- **Opt-in `.env` loading** (#25) — `loadEnvFiles([".env.local", ".env"])` from the
+  new **`prahari/env-file`** entry point, ready to hand to `source`. `process.env`
+  wins over the files, earlier files win over later ones, empty counts as unset,
+  and `process.env` is never mutated unless asked. It is a separate entry because
+  it needs `node:fs`, which must never reach the main bundle. Also
+  `prahari doctor --env-file <path>`. See `docs/env-files.md` for the stance:
+  Node's `--env-file` and dotenv remain first-class alternatives.
+
 ### Changed
 - Coverage threshold raised from 95% to 97% on all four metrics.
 

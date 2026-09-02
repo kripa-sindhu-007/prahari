@@ -14,6 +14,9 @@ names to your app. New to prahari? Start with the [README](../README.md).
 - [Test code that reads env](#test-code-that-reads-env)
 - [A bespoke type, without a schema library](#a-bespoke-type-without-a-schema-library)
 - [Edge runtimes (no `process.env`)](#edge-runtimes-no-processenv)
+- [Required in production only](#required-in-production-only)
+- [Lists, durations and sizes](#lists-durations-and-sizes)
+- [Load a `.env` file yourself](#load-a-env-file-yourself)
 - [Keep `.env.example` honest in CI](#keep-envexample-honest-in-ci)
 - [Secrets and redaction](#secrets-and-redaction)
 - [Defaults, optional, and the empty-string rule](#defaults-optional-and-the-empty-string-rule)
@@ -232,6 +235,57 @@ export default {
 
 A source can also be anything with a synchronous `get(key)`. See
 [sources.md](./sources.md).
+
+## Required in production only
+
+```ts
+import { defineEnv, oneOf, str, url } from "prahari";
+
+export const env = defineEnv({
+  NODE_ENV:   oneOf(["development", "production", "test"]).default("development"),
+  STRIPE_KEY: str().secret().requiredIn("production"),
+  SENTRY_DSN: url().requiredWhen((env) => env.NODE_ENV !== "development"),
+});
+```
+
+Missing it in production fails the boot with `is required when NODE_ENV is
+production`; missing it locally is fine. The type is `string | undefined`, so the
+compiler makes you handle the local case. Any other variable works as the
+condition too — `.requiredWhen((env) => env.BILLING_ENABLED === true)`.
+
+## Lists, durations and sizes
+
+```ts
+import { defineEnv, bytes, duration, list, port } from "prahari";
+
+export const env = defineEnv({
+  ORIGINS:    list().default([]),                    // "a.com,b.com" -> string[]
+  PORTS:      list().of(port()).separator(";"),      // "80;443"      -> number[]
+  TIMEOUT:    duration().default(30_000),            // "30s"         -> 30000 (ms)
+  MAX_UPLOAD: bytes().default(10 * 1024 * 1024),     // "10mb"        -> 10485760
+});
+```
+
+`list()` trims items and drops empty ones; an empty `ORIGINS=` is *unset*, so it
+takes your default rather than silently becoming `[]`. A bad item names itself:
+`item 2 ("abc") must be a number`. `duration()` returns milliseconds, `bytes()`
+returns bytes, and both accept a bare number (ms / bytes) — with `kb`/`mb`/`gb`
+as powers of 1024, the way config files mean them.
+
+## Load a `.env` file yourself
+
+```ts
+import { defineEnv } from "prahari";
+import { loadEnvFiles } from "prahari/env-file";
+
+export const env = defineEnv(schema, {
+  source: loadEnvFiles([".env.local", ".env"]),   // process.env still wins
+});
+```
+
+Opt-in, in its own entry point so `node:fs` never reaches a browser bundle.
+Node's `--env-file` and `dotenv` remain first-class alternatives — see
+[env-files.md](./env-files.md) for the full stance.
 
 ## Keep `.env.example` honest in CI
 

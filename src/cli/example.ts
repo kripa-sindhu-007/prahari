@@ -10,7 +10,15 @@ function tagsFor(d: FieldDescriptor): string {
   const tags: string[] = [];
   // A bare Standard Schema exposes no optional/default info — don't guess.
   if (!d.opaque) {
-    tags.push(d.optional ? "optional" : d.hasDefault ? "has default" : "required");
+    // A conditional requirement outranks the plain optional/required label —
+    // "optional" would be actively misleading for a var that is required in prod.
+    if (d.conditional) {
+      tags.push(
+        d.conditionLabel ? `required when ${d.conditionLabel}` : "conditionally required",
+      );
+    } else {
+      tags.push(d.optional ? "optional" : d.hasDefault ? "has default" : "required");
+    }
   }
   if (d.secret) tags.push("secret");
   tags.push(d.opaque ? `${d.typeName} (standard-schema)` : d.typeName);

@@ -177,3 +177,38 @@ describe("run — doctor", () => {
     expect(out).not.toContain("leak_me"); // secret never printed
   });
 });
+
+describe("doctor --env-file", () => {
+  it("validates against the file plus the current environment", async () => {
+    const dir = fixture();
+    writeFileSync(join(dir, ".env"), "DATABASE_URL=postgres://localhost\nSTRIPE_KEY=sk_live_1\n");
+    const { io, out } = capture(dir, {});
+    const code = await run(["doctor", "--env-file", ".env"], io);
+    expect(code).toBe(0);
+    expect(out()).toContain("against .env + the current environment");
+    expect(out()).toMatch(/All 5 variable\(s\) valid\./);
+  });
+
+  it("still lets the real environment win over the file", async () => {
+    const dir = fixture();
+    writeFileSync(join(dir, ".env"), "DATABASE_URL=postgres://localhost\nSTRIPE_KEY=nope\n");
+    // The shell value is valid; the file's is not — the shell must win.
+    const { io } = capture(dir, { STRIPE_KEY: "sk_live_shell" });
+    expect(await run(["doctor", "--env-file", ".env"], io)).toBe(0);
+  });
+
+  it("reports what the file is still missing", async () => {
+    const dir = fixture();
+    writeFileSync(join(dir, ".env"), "DATABASE_URL=postgres://localhost\n");
+    const { io, out } = capture(dir, {});
+    expect(await run(["doctor", "--env-file", ".env"], io)).toBe(1);
+    expect(out()).toContain("STRIPE_KEY");
+  });
+
+  it("fails clearly when the env file does not exist", async () => {
+    const dir = fixture();
+    const { io, err } = capture(dir, {});
+    expect(await run(["doctor", "--env-file", "nope.env"], io)).toBe(1);
+    expect(err()).toContain("env file not found");
+  });
+});

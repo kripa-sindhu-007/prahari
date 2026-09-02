@@ -17,6 +17,11 @@ function typeCell(d: FieldDescriptor): string {
 function requiredCell(d: FieldDescriptor): string {
   // A bare Standard Schema owns its own optionality — prahari can't read it.
   if (d.opaque) return "?";
+  if (d.conditional) {
+    // Escape the cell separator: a condition label may contain a pipe.
+    const label = d.conditionLabel?.replace(/\|/g, "\\|");
+    return label ? `when ${label}` : "conditional";
+  }
   return d.optional || d.hasDefault ? "no" : "yes";
 }
 
