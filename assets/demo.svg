@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="687" height="513" viewBox="0 0 687 513" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5">
+  <title>prahari — a failing boot report, then CI catching .env.example drift</title>
+  <desc>Terminal recording: "prahari doctor" reports three invalid environment variables with the secret redacted, then "prahari sync" reports that .env.example has drifted from the schema and exits 1.</desc>
+  <style>
+    @keyframes l0{0%,0.00%{opacity:0}0.35%,100%{opacity:1}}@keyframes l1{0%,5.41%{opacity:0}5.76%,100%{opacity:1}}@keyframes l2{0%,7.21%{opacity:0}7.56%,100%{opacity:1}}@keyframes l3{0%,10.57%{opacity:0}10.92%,100%{opacity:1}}@keyframes l4{0%,12.30%{opacity:0}12.65%,100%{opacity:1}}@keyframes l5{0%,16.07%{opacity:0}16.42%,100%{opacity:1}}@keyframes l6{0%,17.79%{opacity:0}18.14%,100%{opacity:1}}@keyframes l7{0%,20.08%{opacity:0}20.43%,100%{opacity:1}}@keyframes l8{0%,22.38%{opacity:0}22.73%,100%{opacity:1}}@keyframes l9{0%,24.51%{opacity:0}24.86%,100%{opacity:1}}@keyframes l10{0%,38.93%{opacity:0}39.28%,100%{opacity:1}}@keyframes l11{0%,41.89%{opacity:0}42.24%,100%{opacity:1}}@keyframes l12{0%,47.30%{opacity:0}47.65%,100%{opacity:1}}@keyframes l13{0%,51.07%{opacity:0}51.42%,100%{opacity:1}}@keyframes l14{0%,52.79%{opacity:0}53.14%,100%{opacity:1}}@keyframes l15{0%,55.08%{opacity:0}55.43%,100%{opacity:1}}@keyframes l16{0%,59.26%{opacity:0}59.61%,100%{opacity:1}}@keyframes l17{0%,60.98%{opacity:0}61.33%,100%{opacity:1}}@keyframes l18{0%,66.39%{opacity:0}66.74%,100%{opacity:1}}@keyframes l19{0%,70.57%{opacity:0}70.92%,100%{opacity:1}}@keyframes l20{0%,72.30%{opacity:0}72.65%,100%{opacity:1}}
+    .l0{animation:l0 12.2s steps(1,end) infinite}.l1{animation:l1 12.2s steps(1,end) infinite}.l2{animation:l2 12.2s steps(1,end) infinite}.l3{animation:l3 12.2s steps(1,end) infinite}.l4{animation:l4 12.2s steps(1,end) infinite}.l5{animation:l5 12.2s steps(1,end) infinite}.l6{animation:l6 12.2s steps(1,end) infinite}.l7{animation:l7 12.2s steps(1,end) infinite}.l8{animation:l8 12.2s steps(1,end) infinite}.l9{animation:l9 12.2s steps(1,end) infinite}.l10{animation:l10 12.2s steps(1,end) infinite}.l11{animation:l11 12.2s steps(1,end) infinite}.l12{animation:l12 12.2s steps(1,end) infinite}.l13{animation:l13 12.2s steps(1,end) infinite}.l14{animation:l14 12.2s steps(1,end) infinite}.l15{animation:l15 12.2s steps(1,end) infinite}.l16{animation:l16 12.2s steps(1,end) infinite}.l17{animation:l17 12.2s steps(1,end) infinite}.l18{animation:l18 12.2s steps(1,end) infinite}.l19{animation:l19 12.2s steps(1,end) infinite}.l20{animation:l20 12.2s steps(1,end) infinite}
+    @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+    .cursor{animation:blink 1.1s steps(1,end) infinite}
+    @media (prefers-reduced-motion: reduce){
+      text{animation:none!important;opacity:1!important}
+      .cursor{animation:none!important}
+    }
+  </style>
+  <rect width="687" height="513" rx="10" fill="#0B0F14" stroke="#1F2933"/>
+  <g transform="translate(20,22)">
+    <circle r="6" fill="#FF5F57"/><circle cx="19" r="6" fill="#FEBC2E"/><circle cx="38" r="6" fill="#28C840"/>
+  </g>
+  <text x="343.5" y="27" fill="#6E7681" font-size="12" text-anchor="middle">prahari</text>
+  <line x1="0" y1="38" x2="687" y2="38" stroke="#1F2933"/>
+  <text class="l0" xml:space="preserve" x="22" y="52" fill="#22C55E" font-weight="700">$ prahari doctor</text>
+  <text class="l1" xml:space="preserve" x="22" y="73" fill="#3FB950" font-weight="400">  ✓ NODE_ENV</text>
+  <text class="l2" xml:space="preserve" x="22" y="94" fill="#3FB950" font-weight="400">  ✓ SENTRY_DSN</text>
+  <text class="l4" xml:space="preserve" x="22" y="136" fill="#C9D1D9" font-weight="400">prahari: 3 environment variables failed validation</text>
+  <text class="l6" xml:space="preserve" x="22" y="178" fill="#C9D1D9" font-weight="400">  ✗ PORT          (port)    must be &lt;= 65535  received: "99999"</text>
+  <text class="l7" xml:space="preserve" x="22" y="199" fill="#C9D1D9" font-weight="400">  ✗ DATABASE_URL  (url)     must be a valid URL  received: "postgres"</text>
+  <text class="l8" xml:space="preserve" x="22" y="220" fill="#C9D1D9" font-weight="400">  ✗ STRIPE_KEY    (string)  must start with "sk_"  received: ***</text>
+  <text class="l9" xml:space="preserve" x="22" y="241" fill="#7D8590" font-weight="400" font-style="italic">                                                        ↑ secret, never printed</text>
+  <text class="l11" xml:space="preserve" x="22" y="283" fill="#22C55E" font-weight="700">$ prahari sync</text>
+  <text class="l12" xml:space="preserve" x="22" y="304" fill="#F85149" font-weight="400">✗ .env.example has drifted from your schema:</text>
+  <text class="l14" xml:space="preserve" x="22" y="346" fill="#D29922" font-weight="400">  + STRIPE_KEY — in schema, missing from file</text>
+  <text class="l15" xml:space="preserve" x="22" y="367" fill="#D29922" font-weight="400">  + SENTRY_DSN — in schema, missing from file</text>
+  <text class="l17" xml:space="preserve" x="22" y="409" fill="#6E7681" font-weight="400">Run `prahari example` to regenerate.</text>
+  <text class="l18" xml:space="preserve" x="22" y="430" fill="#22C55E" font-weight="700">$ echo $?</text>
+  <text class="l19" xml:space="preserve" x="22" y="451" fill="#C9D1D9" font-weight="400">1</text>
+  <text class="l20" xml:space="preserve" x="22" y="472" fill="#7D8590" font-weight="400" font-style="italic">  ← the build fails here, not in production</text>
+  <rect class="cursor" x="22" y="476" width="8" height="15" fill="#22C55E" opacity="0.8"/>
+</svg>
