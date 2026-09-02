@@ -20,7 +20,7 @@
 
 import { URL } from "node:url";
 
-import { EnvFieldError } from "./errors.js";
+import { EnvFieldError, isEnvFieldError } from "./errors.js";
 
 const TRUTHY = new Set(["1", "true", "yes", "on"]);
 const FALSEY = new Set(["0", "false", "no", "off"]);
@@ -138,6 +138,11 @@ abstract class BaseValidator<T> implements Validator<T> {
       if (this.meta.optional) return undefined as T;
       throw new EnvFieldError("is required but was not set");
     }
+    return this.coerceChecked(raw);
+  }
+
+  /** Coerce a present raw value and run every registered check. */
+  protected coerceChecked(raw: string): T {
     const value = this.coerce(raw);
     for (const check of this.checks) check(value);
     return value;
@@ -173,6 +178,143 @@ abstract class BaseValidator<T> implements Validator<T> {
     this.meta.optional = true;
     return this as unknown as Validator<T | undefined>;
   }
+
+  /**
+   * Post-process a validated value into a derived type, returning a NEW
+   * validator typed at the result — so `.default()` / `.optional()` chained
+   * after `.transform()` are typed at the transformed type, which is what reads
+   * naturally: `str().transform((s) => s.split(","))`.
+   *
+   * The transform runs after this validator's coercion AND its checks. A
+   * default declared BEFORE the transform is transformed eagerly (once, at
+   * declaration) so the declared intent survives; `desc`/`secret`/`optional`
+   * carry over because they describe the variable, not the type.
+   */
+  transform<U>(fn: (value: T) => U): DerivedValidator<U> {
+    const inner = this;
+    const derived = new DerivedValidator<U>({
+      // The type name still describes what the RAW value must look like.
+      typeName: inner.meta.typeName,
+      coerce: (raw) => runUserFn(() => fn(inner.coerceChecked(raw))),
+      // `.env.example` needs the raw, pre-transform placeholder.
+      example: () => inner.exampleValue(),
+    });
+    derived.meta.description = inner.meta.description;
+    derived.meta.secret = inner.meta.secret;
+    derived.meta.optional = inner.meta.optional;
+    if (inner.meta.hasDefault) {
+      derived.meta.hasDefault = true;
+      try {
+        derived.meta.default = fn(inner.meta.default as T);
+      } catch (err) {
+        // A default that cannot survive its own transform is a declaration bug,
+        // not a config error — fail loudly where it is written.
+        throw new Error(
+          `.transform() failed on the declared default: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
+    return derived;
+  }
+}
+
+/**
+ * Run a user-supplied coercion (`custom()` / `.transform()`) and normalize any
+ * failure into an `EnvFieldError`, so `throw new Error("must be a UUID")` in
+ * user code becomes an ordinary row in the boot report instead of crashing the
+ * process with an unhandled error.
+ */
+function runUserFn<T>(run: () => T): T {
+  try {
+    return run();
+  } catch (err) {
+    if (isEnvFieldError(err)) throw err;
+    const message = err instanceof Error ? err.message : String(err);
+    throw new EnvFieldError(message === "" ? "failed validation" : message);
+  }
+}
+
+interface DerivedOptions<T> {
+  typeName: string;
+  coerce: (raw: string) => T;
+  /** Overrides the default-derived `.env.example` placeholder when supplied. */
+  example?: () => string;
+}
+
+/**
+ * A validator built from a plain coercion function — the single implementation
+ * behind both `custom()` and `.transform()`. It inherits every shared modifier
+ * (`.desc/.secret/.default/.optional/.transform`) from `BaseValidator`.
+ */
+class DerivedValidator<T> extends BaseValidator<T> {
+  readonly typeName: string;
+  private readonly coerceFn: (raw: string) => T;
+  private readonly exampleFn?: () => string;
+
+  constructor(options: DerivedOptions<T>) {
+    super();
+    this.typeName = options.typeName;
+    this.meta.typeName = options.typeName;
+    this.coerceFn = options.coerce;
+    this.exampleFn = options.example;
+  }
+
+  protected coerce(raw: string): T {
+    return this.coerceFn(raw);
+  }
+
+  override exampleValue(): string {
+    if (this.exampleFn) return this.exampleFn();
+    return super.exampleValue();
+  }
+}
+
+export type { DerivedValidator };
+
+/** Extra metadata for a `custom()` field. */
+export interface CustomMeta {
+  /** Human description for docs / `.env.example`. */
+  desc?: string;
+  /** Redact the value in the boot report and never write it to `.env.example`. */
+  secret?: boolean;
+  /** Placeholder value for `.env.example`. */
+  example?: string;
+  /** Type label shown in the report and docs. Defaults to `"custom"`. */
+  typeName?: string;
+}
+
+/**
+ * Declare a one-off validator without reaching for a schema library — the
+ * zero-dependency escape hatch for a bespoke type.
+ *
+ * `fn` receives the present, non-empty raw string and returns the typed value.
+ * Throw anything (an `Error` is enough) to fail the variable; the message
+ * becomes the reason in the aggregate report.
+ *
+ * ```ts
+ * const env = defineEnv({
+ *   REGION: custom((raw) => {
+ *     if (!/^[a-z]{2}-[a-z]+-\d$/.test(raw)) throw new Error("must look like us-east-1");
+ *     return raw as `${string}-${string}-${number}`;
+ *   }, { desc: "AWS region" }),
+ * });
+ * ```
+ */
+export function custom<T>(
+  fn: (raw: string) => T,
+  meta: CustomMeta = {},
+): DerivedValidator<T> {
+  const example = meta.example;
+  const validator = new DerivedValidator<T>({
+    typeName: meta.typeName ?? "custom",
+    coerce: (raw) => runUserFn(() => fn(raw)),
+    example: example !== undefined ? () => example : undefined,
+  });
+  if (meta.desc !== undefined) validator.desc(meta.desc);
+  if (meta.secret) validator.secret();
+  return validator;
 }
 
 // --------------------------------------------------------------------------

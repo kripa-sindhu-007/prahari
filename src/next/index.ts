@@ -14,6 +14,7 @@
  */
 
 import { defineClientServerEnv } from "../adapter.js";
+import type { ComposedSchema } from "../schema.js";
 import type { EnvSchema, InferEnv } from "../validators.js";
 
 const DEFAULT_CLIENT_PREFIX = "NEXT_PUBLIC_";
@@ -23,9 +24,9 @@ export interface DefineNextEnvOptions<
   Client extends EnvSchema,
 > {
   /** Server-only variables. Never exposed to the browser. */
-  server?: Server;
+  server?: Server | ComposedSchema<Server>;
   /** Browser-exposed variables. Every key must carry the client prefix. */
-  client?: Client;
+  client?: Client | ComposedSchema<Client>;
   /**
    * Explicit runtime values, e.g. `{ DATABASE_URL: process.env.DATABASE_URL,
    * NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL }`. Required because

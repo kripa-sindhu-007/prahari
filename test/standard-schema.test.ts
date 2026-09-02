@@ -202,3 +202,12 @@ describe("CLI introspection tolerates bare Standard Schema fields", () => {
     expect(out).toContain("Service token"); // wrapped field keeps its description
   });
 });
+
+describe("standard() example placeholder", () => {
+  it("uses the supplied example in .env.example, else blank", () => {
+    expect(standard(z.string(), { example: "sk_live_123" }).exampleValue()).toBe(
+      "sk_live_123",
+    );
+    expect(standard(z.string()).exampleValue()).toBe("");
+  });
+});

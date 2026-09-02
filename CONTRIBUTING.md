@@ -47,7 +47,7 @@ all five:
 
 ```bash
 corepack pnpm test          # unit + integration
-corepack pnpm test:cov      # + coverage (95% threshold enforced on all metrics)
+corepack pnpm test:cov      # + coverage (97% threshold enforced on all metrics)
 corepack pnpm test:types    # type-level
 corepack pnpm test:package  # build + publint + attw
 corepack pnpm test:all      # everything above

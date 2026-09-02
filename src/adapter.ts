@@ -19,6 +19,7 @@
  */
 
 import { defineEnv } from "./core.js";
+import { normalizeSchema, type ComposedSchema } from "./schema.js";
 import type { EnvSchema, InferEnv } from "./validators.js";
 
 export interface ClientServerEnvOptions<
@@ -26,9 +27,9 @@ export interface ClientServerEnvOptions<
   Client extends EnvSchema,
 > {
   /** Server-only variables. Never exposed to the browser. */
-  server?: Server;
+  server?: Server | ComposedSchema<Server>;
   /** Browser-exposed variables. Every key must carry the client prefix. */
-  client?: Client;
+  client?: Client | ComposedSchema<Client>;
   /**
    * Explicit runtime values, referenced statically so the bundler inlines the
    * public ones into the client bundle. A dynamic lookup would never reach the
@@ -58,8 +59,8 @@ export function defineClientServerEnv<
   options: ClientServerEnvOptions<Server, Client>,
 ): Readonly<InferEnv<Server> & InferEnv<Client>> {
   const { clientPrefix: prefix, adapter } = options;
-  const server = (options.server ?? {}) as EnvSchema;
-  const client = (options.client ?? {}) as EnvSchema;
+  const server = (options.server ? normalizeSchema(options.server) : {}) as EnvSchema;
+  const client = (options.client ? normalizeSchema(options.client) : {}) as EnvSchema;
   // `window` isn't in this package's lib (it targets Node), so probe it via
   // globalThis: present only in a browser → we're on the client.
   const isServer =

@@ -3,6 +3,43 @@
 All notable changes to **prahari** are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+The v1.0 core API surface. Everything here is **backward-compatible** — no
+existing call signature changes, nothing is removed.
+
+### Added
+- **Composable schemas** (#5) — `defineSchema(fields)` returns a schema with
+  `.extend(more)` and `.merge(other)`, for a shared base that each package
+  extends. Later keys win at runtime and in the inferred type; composition is
+  immutable, so one app's extension can't reach into another's. Composed schemas
+  are accepted anywhere a plain record is: `defineEnv`, `safeParse`, the Next/Vite
+  adapters, and the whole CLI. See `docs/composition.md`.
+- **Pluggable value sources** (#6) — the `source` option is now a documented,
+  stable contract: `EnvSource` is either a plain record or anything with a
+  synchronous `get(key)`. prahari only ever asks for keys the schema declares, so
+  a source never has to enumerate. See `docs/sources.md`, which also documents why
+  resolution is synchronous and what an async source would cost.
+- **`custom()` and `.transform()`** (#26) — zero-dependency extensibility.
+  `custom(fn, meta?)` builds a validator from a plain function (throw to fail; the
+  message becomes that variable's row in the report), and `.transform(fn)` on any
+  built-in reshapes a validated value into a derived type, re-typing `.default()`
+  and `.optional()` chained after it. See `docs/extensibility.md`.
+- **`safeParse`** (#24) — the non-throwing variant, returning
+  `{ success: true, data } | { success: false, error }`, for tests, health checks
+  and tooling. Exported standalone and as `defineEnv.safeParse`; it shares one
+  pipeline with `defineEnv`, so the two cannot drift.
+
+### Fixed
+- `defineEnv` no longer references `process.env` unguarded. On a runtime without
+  a `process` binding (Cloudflare Workers, Deno Deploy) and no explicit `source`,
+  it now produces the normal "is required but was not set" report instead of
+  throwing `ReferenceError: process is not defined` — the runtime this feature
+  exists to serve was the one it crashed on.
+
+### Changed
+- Coverage threshold raised from 95% to 97% on all four metrics.
+
 ## [0.3.0] - 2026-09-01
 
 ### Added

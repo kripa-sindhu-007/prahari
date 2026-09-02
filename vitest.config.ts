@@ -24,11 +24,13 @@ export default defineConfig({
       // html is the downloadable artifact; text prints in the run logs.
       reporter: ["text", "html", "json", "json-summary"],
       reportOnFailure: true,
+      // The suite runs well above these; the floor is what CI enforces so a
+      // change cannot quietly land uncovered.
       thresholds: {
-        lines: 95,
-        functions: 95,
-        statements: 95,
-        branches: 95,
+        lines: 97,
+        functions: 97,
+        statements: 97,
+        branches: 97,
       },
     },
   },
