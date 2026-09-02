@@ -40,25 +40,44 @@ const KIND = {
   bad: { fill: C.red, weight: 400 },
   warn: { fill: C.yellow, weight: 400 },
   dim: { fill: C.dim, weight: 400 },
+  bold: { fill: C.bold, weight: 700 },
   head: { fill: C.bold, weight: 700 },
   note: { fill: C.note, weight: 400, italic: true },
   gap: { fill: C.text, weight: 400 },
+  seg: { fill: C.text, weight: 400 },
 };
 
-// Each entry: [kind, text, holdSeconds] — hold is the pause AFTER the line.
+/** Flatten a line to plain text, for width measurement. */
+const plain = (text) => (Array.isArray(text) ? text.map(([, s]) => s).join("") : text);
+
+/**
+ * A failure row as the CLI actually paints it: red ✗, bold key, dim type, plain
+ * reason, dim received. Written as segments so the demo matches the terminal
+ * part for part — the columns come from the real `padEnd` widths.
+ */
+const row = (key, type, reason, received) => [
+  ["out", "  "],
+  ["bad", "✗"],
+  ["out", " "],
+  ["bold", key],
+  ["out", "  "],
+  ["dim", type],
+  ["out", `  ${reason}`],
+  ["dim", `  received: ${received}`],
+];
+
+// Each entry: [kind, text | segments, holdSeconds] — hold is the pause AFTER
+// the line. A segment array renders as <tspan>s inside one <text>.
 const SCRIPT = [
   ["cmd", "$ prahari doctor", 0.5],
   ["ok", "  ✓ NODE_ENV", 0.06],
   ["ok", "  ✓ SENTRY_DSN", 0.25],
   ["gap", "", 0.05],
-  // The boot report is PLAIN in the real CLI (report.ts renders colourless text
-  // so it survives log pipes); only `sync` colourises. The demo shows what you
-  // actually see — a demo that out-dresses the tool is a lie you get caught in.
-  ["out", "prahari: 3 environment variables failed validation", 0.3],
+  ["bad", "prahari: 3 environment variables failed validation", 0.3],
   ["gap", "", 0.05],
-  ["out", '  ✗ PORT          (port)    must be <= 65535  received: "99999"', 0.12],
-  ["out", '  ✗ DATABASE_URL  (url)     must be a valid URL  received: "postgres"', 0.12],
-  ["out", '  ✗ STRIPE_KEY    (string)  must start with "sk_"  received: ***', 0.1],
+  ["seg", row("PORT        ", "(port)  ", "must be <= 65535", '"99999"'), 0.12],
+  ["seg", row("DATABASE_URL", "(url)   ", "must be a valid URL", '"postgres"'), 0.12],
+  ["seg", row("STRIPE_KEY  ", "(string)", 'must start with "sk_"', "***"), 0.1],
   ["note", "                                                        ↑ secret, never printed", 1.6],
   ["gap", "", 0.2],
   ["cmd", "$ prahari sync", 0.5],
@@ -80,7 +99,7 @@ const PAD_X = 22;
 const PAD_TOP = 52; // room for the title bar
 const PAD_BOTTOM = 20;
 
-const longest = Math.max(...SCRIPT.map(([, t]) => t.length));
+const longest = Math.max(...SCRIPT.map(([, t]) => plain(t).length));
 const WIDTH = Math.ceil(PAD_X * 2 + longest * CHAR_W);
 const HEIGHT = PAD_TOP + SCRIPT.length * LINE_H + PAD_BOTTOM;
 
@@ -115,16 +134,25 @@ const rules = timeline
 
 const texts = timeline
   .map((line, i) => {
-    if (line.text === "") return "";
+    if (plain(line.text) === "") return "";
     const style = KIND[line.kind];
     const y = PAD_TOP + i * LINE_H;
     const italic = style.italic ? ' font-style="italic"' : "";
+    // A segmented line becomes tspans so one row can carry several colours —
+    // matching how the CLI paints the ✗, the key and the type differently.
+    const body = Array.isArray(line.text)
+      ? line.text
+          .map(([kind, text]) => {
+            const s = KIND[kind];
+            const weight = s.weight === 400 ? "" : ` font-weight="${s.weight}"`;
+            return `<tspan fill="${s.fill}"${weight}>${escape(text)}</tspan>`;
+          })
+          .join("")
+      : escape(line.text);
     // xml:space="preserve" is load-bearing: SVG collapses leading and repeated
     // spaces by default, which would destroy the report's column alignment and
     // leave the "↑ secret" annotation pointing at nothing.
-    return `<text class="l${i}" xml:space="preserve" x="${PAD_X}" y="${y}" fill="${style.fill}" font-weight="${style.weight}"${italic}>${escape(
-      line.text,
-    )}</text>`;
+    return `<text class="l${i}" xml:space="preserve" x="${PAD_X}" y="${y}" fill="${style.fill}" font-weight="${style.weight}"${italic}>${body}</text>`;
   })
   .filter(Boolean)
   .join("\n  ");

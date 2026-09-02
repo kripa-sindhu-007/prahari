@@ -20,10 +20,10 @@
   <text class="l0" xml:space="preserve" x="22" y="52" fill="#22C55E" font-weight="700">$ prahari doctor</text>
   <text class="l1" xml:space="preserve" x="22" y="73" fill="#3FB950" font-weight="400">  ✓ NODE_ENV</text>
   <text class="l2" xml:space="preserve" x="22" y="94" fill="#3FB950" font-weight="400">  ✓ SENTRY_DSN</text>
-  <text class="l4" xml:space="preserve" x="22" y="136" fill="#C9D1D9" font-weight="400">prahari: 3 environment variables failed validation</text>
-  <text class="l6" xml:space="preserve" x="22" y="178" fill="#C9D1D9" font-weight="400">  ✗ PORT          (port)    must be &lt;= 65535  received: "99999"</text>
-  <text class="l7" xml:space="preserve" x="22" y="199" fill="#C9D1D9" font-weight="400">  ✗ DATABASE_URL  (url)     must be a valid URL  received: "postgres"</text>
-  <text class="l8" xml:space="preserve" x="22" y="220" fill="#C9D1D9" font-weight="400">  ✗ STRIPE_KEY    (string)  must start with "sk_"  received: ***</text>
+  <text class="l4" xml:space="preserve" x="22" y="136" fill="#F85149" font-weight="400">prahari: 3 environment variables failed validation</text>
+  <text class="l6" xml:space="preserve" x="22" y="178" fill="#C9D1D9" font-weight="400"><tspan fill="#C9D1D9">  </tspan><tspan fill="#F85149">✗</tspan><tspan fill="#C9D1D9"> </tspan><tspan fill="#E6EDF3" font-weight="700">PORT        </tspan><tspan fill="#C9D1D9">  </tspan><tspan fill="#6E7681">(port)  </tspan><tspan fill="#C9D1D9">  must be &lt;= 65535</tspan><tspan fill="#6E7681">  received: "99999"</tspan></text>
+  <text class="l7" xml:space="preserve" x="22" y="199" fill="#C9D1D9" font-weight="400"><tspan fill="#C9D1D9">  </tspan><tspan fill="#F85149">✗</tspan><tspan fill="#C9D1D9"> </tspan><tspan fill="#E6EDF3" font-weight="700">DATABASE_URL</tspan><tspan fill="#C9D1D9">  </tspan><tspan fill="#6E7681">(url)   </tspan><tspan fill="#C9D1D9">  must be a valid URL</tspan><tspan fill="#6E7681">  received: "postgres"</tspan></text>
+  <text class="l8" xml:space="preserve" x="22" y="220" fill="#C9D1D9" font-weight="400"><tspan fill="#C9D1D9">  </tspan><tspan fill="#F85149">✗</tspan><tspan fill="#C9D1D9"> </tspan><tspan fill="#E6EDF3" font-weight="700">STRIPE_KEY  </tspan><tspan fill="#C9D1D9">  </tspan><tspan fill="#6E7681">(string)</tspan><tspan fill="#C9D1D9">  must start with "sk_"</tspan><tspan fill="#6E7681">  received: ***</tspan></text>
   <text class="l9" xml:space="preserve" x="22" y="241" fill="#7D8590" font-weight="400" font-style="italic">                                                        ↑ secret, never printed</text>
   <text class="l11" xml:space="preserve" x="22" y="283" fill="#22C55E" font-weight="700">$ prahari sync</text>
   <text class="l12" xml:space="preserve" x="22" y="304" fill="#F85149" font-weight="400">✗ .env.example has drifted from your schema:</text>
