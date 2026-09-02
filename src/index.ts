@@ -10,7 +10,13 @@
 export const VERSION = "0.3.0";
 
 export { defineEnv, safeParse } from "./core.js";
-export type { DefineEnvOptions, EnvSource, SafeParseResult } from "./core.js";
+export type {
+  DefineEnvOptions,
+  EnvSource,
+  EnvWarning,
+  SafeParseResult,
+  UnknownPolicy,
+} from "./core.js";
 export { defineSchema, isComposedSchema } from "./schema.js";
 export type { ComposedSchema, MergeSchemas, SchemaInput } from "./schema.js";
 export {

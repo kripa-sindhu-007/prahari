@@ -21,6 +21,7 @@ function tagsFor(d: FieldDescriptor): string {
     }
   }
   if (d.secret) tags.push("secret");
+  if (d.deprecated) tags.push("deprecated");
   tags.push(d.opaque ? `${d.typeName} (standard-schema)` : d.typeName);
   if (d.enumValues) tags.push(`one of: ${d.enumValues.join(" | ")}`);
   return tags.join(", ");
@@ -37,6 +38,9 @@ export function renderEnvExample(schema: EnvSchema): string {
   for (const key of Object.keys(schema)) {
     const d = describeField(schema[key]!);
     if (d.description) lines.push(`# ${d.description}`);
+    if (d.deprecated && d.deprecationMessage) {
+      lines.push(`# DEPRECATED: ${d.deprecationMessage}`);
+    }
     lines.push(`# (${tagsFor(d)})`);
     // Never write a real example for secrets — leave the value blank.
     const value = d.secret ? "" : d.exampleValue();

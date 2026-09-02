@@ -141,6 +141,26 @@ Run `prahari example` to regenerate.
 Wire `prahari sync` into CI and a stale example file becomes a failing check, not a
 lost afternoon for the next person who clones the repo.
 
+Both `doctor` and `sync` speak JSON for pipelines, with the same exit codes:
+
+```console
+$ prahari doctor --json
+{
+  "ok": false,
+  "variables": [
+    { "key": "PORT", "status": "ok" },
+    { "key": "DATABASE_URL", "status": "invalid",
+      "reason": "is required but was not set", "expected": "string", "received": null }
+  ],
+  "warnings": []
+}
+```
+
+Secrets stay redacted there too (`"received": "***"`). And
+`prahari doctor --strict --env-file .env` flags variables the *file* declares but your
+schema no longer does — the drift story, from the other direction. Full CI wiring:
+[docs/ci.md](docs/ci.md).
+
 ---
 
 ## Validators
@@ -160,7 +180,8 @@ lost afternoon for the next person who clones the repo.
 | `custom<T>(fn)` | `T` | your function, zero dependencies — throw to fail |
 
 Shared modifiers: `.default(value)` · `.optional()` · `.desc(text)` · `.secret()` ·
-`.transform(fn)` · `.requiredWhen(fn)` / `.requiredIn("production")`.
+`.deprecated(msg)` · `.transform(fn)` · `.requiredWhen(fn)` / `.requiredIn("production")`.
+Metadata modifiers come before `.optional()`, which closes the chain.
 
 **Defaults are typed values, not re-parsed strings** — `.default(3000)` is the number `3000`,
 full stop. And an explicitly empty env var (`FOO=`) counts as **unset**, so it flows through
@@ -231,6 +252,26 @@ export const env = defineEnv(base.extend({ PORT: port().default(3000), DATABASE_
 
 A composed schema works anywhere a plain record does — including the adapters and the whole
 CLI. Details: [docs/composition.md](docs/composition.md).
+
+---
+
+## Retiring a variable
+
+```ts
+OLD_API_URL: url().deprecated("use API_URL instead").optional(),
+```
+```
+prahari: OLD_API_URL is deprecated — use API_URL instead
+```
+
+It still validates — a deprecation is a message to the humans, not a failure — and it only
+warns when the variable is actually **set**, because warning about one nobody uses just
+trains people to ignore warnings. `prahari docs` and `.env.example` mark it too, so the
+notice reaches people reading the generated docs rather than only people reading logs.
+
+Warnings go to `console.warn` (stderr, once per process); `onWarn` redirects them into your
+logger or silences them, and `safeParse` returns them in its result. Nothing is emitted
+unless you asked for it. Details: [docs/warnings.md](docs/warnings.md).
 
 ---
 
@@ -401,7 +442,8 @@ runtimes, testing code that reads env, CI drift-checking, and secrets — live i
 **[docs/recipes.md](docs/recipes.md)**.
 
 Deeper references: [composition](docs/composition.md) · [value sources](docs/sources.md) ·
-[custom types](docs/extensibility.md) · [`.env` files](docs/env-files.md).
+[custom types](docs/extensibility.md) · [`.env` files](docs/env-files.md) ·
+[warnings](docs/warnings.md) · [CI](docs/ci.md).
 
 ---
 

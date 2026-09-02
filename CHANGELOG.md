@@ -61,8 +61,31 @@ existing call signature changes, nothing is removed.
   `prahari doctor --env-file <path>`. See `docs/env-files.md` for the stance:
   Node's `--env-file` and dotenv remain first-class alternatives.
 
+- **Machine-readable CLI output** (#29) — `prahari doctor --json` and
+  `prahari sync --json` print structured results with the same exit codes, for CI
+  and tooling. Secrets stay redacted (`"received": "***"`) and an absent value is
+  `null`, never the string `"undefined"`. Human output is unchanged without the
+  flag. See `docs/ci.md`.
+- **Deprecation warnings** (#30) — `.deprecated("use API_URL instead")` keeps
+  validating the variable but warns when it is actually **set** (warning about one
+  nobody uses only trains people to ignore warnings). `prahari docs` and
+  `.env.example` mark the field too.
+- **Unknown-variable detection** (#30) — opt-in `{ unknown: "warn" | "error" }` on
+  `defineEnv`/`safeParse`, plus `prahari doctor --strict --env-file <path>`, which
+  reports variables the file declares and the schema does not. `--strict` requires
+  `--env-file`: run against `process.env` it would flag `PATH`, `HOME` and every
+  other unrelated variable. Requires an enumerable source — a `get(key)` source
+  cannot be listed, so the check is skipped for one.
+- **Warning plumbing** — warnings go to `console.warn` as one `prahari: …` line
+  (stderr, once per process at module scope); `onWarn` redirects or silences them,
+  and `safeParse` now returns `warnings: EnvWarning[]` on both branches. Nothing is
+  emitted unless the schema asked for it. See `docs/warnings.md`.
+
 ### Changed
 - Coverage threshold raised from 95% to 97% on all four metrics.
+- CI/release workflows: `actions/checkout`, `actions/setup-node`,
+  `actions/upload-artifact` and `actions/download-artifact` bumped to `@v5` — the
+  `@v4` line targets Node 20, which GitHub has deprecated on its runners.
 
 ## [0.3.0] - 2026-09-01
 

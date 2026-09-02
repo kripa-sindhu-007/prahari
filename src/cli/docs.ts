@@ -11,7 +11,10 @@ function typeCell(d: FieldDescriptor): string {
   const base = d.enumValues
     ? d.enumValues.map((e) => `\`${e}\``).join(" \\| ")
     : d.typeName;
-  return d.secret ? `${base} (secret)` : base;
+  const notes: string[] = [];
+  if (d.secret) notes.push("secret");
+  if (d.deprecated) notes.push("deprecated");
+  return notes.length > 0 ? `${base} (${notes.join(", ")})` : base;
 }
 
 function requiredCell(d: FieldDescriptor): string {
@@ -36,7 +39,8 @@ function defaultCell(d: FieldDescriptor): string {
 export function renderDocs(schema: EnvSchema): string {
   const rows = Object.keys(schema).map((key) => {
     const d = describeField(schema[key]!);
-    const desc = d.description ?? "";
+    const notes = [d.description, d.deprecationMessage && `**Deprecated** — ${d.deprecationMessage}`];
+    const desc = notes.filter(Boolean).join(" ");
     return `| \`${key}\` | ${typeCell(d)} | ${requiredCell(d)} | ${defaultCell(d)} | ${desc} |`;
   });
 

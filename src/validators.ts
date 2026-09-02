@@ -43,6 +43,8 @@ export interface ValidatorMeta<T> {
   enumValues?: readonly string[];
   /** Set by `.requiredWhen()` / `.requiredIn()`; evaluated by the core's second pass. */
   requiredWhen?: ConditionalRequirement;
+  /** Set by `.deprecated()`. The optional message names the replacement. */
+  deprecated?: { message?: string };
 }
 
 /** Public shape of any validator. */
@@ -187,6 +189,21 @@ abstract class BaseValidator<T> implements Validator<T> {
   optional(): Validator<T | undefined> {
     this.meta.optional = true;
     return this as unknown as Validator<T | undefined>;
+  }
+
+  /**
+   * Mark this variable as on its way out. It still validates exactly as before —
+   * a deprecation is a message to the humans, not a failure — but a warning is
+   * emitted when the variable is actually **set**. Warning about a deprecated
+   * variable nobody uses would just train people to ignore warnings.
+   *
+   * ```ts
+   * OLD_API_URL: url().deprecated("use API_URL instead"),
+   * ```
+   */
+  deprecated(message?: string): this {
+    this.meta.deprecated = { message };
+    return this;
   }
 
   /**
@@ -888,7 +905,16 @@ export interface FieldDescriptor {
   conditional: boolean;
   /** Human phrasing of that condition, when one was supplied. */
   conditionLabel?: string;
+  /** `true` when the field is marked `.deprecated()`. */
+  deprecated: boolean;
+  /** The deprecation message, when one was supplied. */
+  deprecationMessage?: string;
   exampleValue(): string;
+}
+
+/** The message a deprecated variable warns with. */
+export function deprecationMessage(key: string, message?: string): string {
+  return message ? `${key} is deprecated — ${message}` : `${key} is deprecated`;
 }
 
 /**
@@ -947,6 +973,7 @@ export function describeField(field: EnvField): FieldDescriptor {
       hasDefault: false,
       opaque: true,
       conditional: false,
+      deprecated: false,
       exampleValue: () => "",
     };
   }
@@ -962,6 +989,8 @@ export function describeField(field: EnvField): FieldDescriptor {
     opaque: false,
     conditional: v.meta.requiredWhen !== undefined,
     conditionLabel: v.meta.requiredWhen?.label,
+    deprecated: v.meta.deprecated !== undefined,
+    deprecationMessage: v.meta.deprecated?.message,
     exampleValue: () => v.exampleValue(),
   };
 }
