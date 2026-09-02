@@ -138,3 +138,19 @@ describe("defineEnv — secret redaction edges", () => {
     });
   });
 });
+
+describe("the thrown report stays machine-clean", () => {
+  it("carries no ANSI escapes, even with colour forced on", () => {
+    process.env.FORCE_COLOR = "1";
+    try {
+      defineEnv({ PORT: port() }, { source: {} });
+    } catch (err) {
+      // The message is logged, serialized and diffed — escapes have no business
+      // in it. Colour is the CLI's job, applied on top of the same layout.
+      // eslint-disable-next-line no-control-regex
+      expect((err as Error).message).not.toMatch(/\x1b\[/);
+    } finally {
+      delete process.env.FORCE_COLOR;
+    }
+  });
+});

@@ -201,7 +201,17 @@ async function cmdDoctor(io: RunIO, values: Record<string, unknown>): Promise<nu
     io.stdout(`\n${green(`All ${result.ok.length} variable(s) valid.`)}\n`);
     return 0;
   }
-  io.stdout(`\n${formatReport(result.failures)}`);
+  // Same table the boot error carries, painted for a terminal. `sync` has always
+  // failed in colour; there was no reason for `doctor` to whisper.
+  io.stdout(
+    `\n${formatReport(result.failures, {
+      heading: red,
+      cross: red,
+      key: bold,
+      type: dim,
+      received: dim,
+    })}`,
+  );
   return 1;
 }
 

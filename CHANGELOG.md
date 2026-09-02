@@ -109,6 +109,13 @@ runtimes with no `process`. `.env` loading lives behind its own entry point
   process would silently no-op.
 
 ### Changed
+- `prahari doctor` now **colourises its failure report** — red heading and ✗, bold
+  variable name, dim type and received value. `sync` has always failed in colour;
+  there was no reason for `doctor` to whisper. `formatReport` stays plain by
+  default and takes an optional `paint` map, so the thrown `EnvValidationError`
+  message contains no ANSI (it gets logged, serialized and diffed) and there is
+  one implementation of the table rather than two that drift. Honors
+  `NO_COLOR`/`FORCE_COLOR` like the rest of the CLI; `--json` is never coloured.
 - Coverage threshold raised from 95% to 97% on all four metrics.
 - `VERSION` is now checked against `package.json` by a test — two sources of truth
   for the version was one too many.

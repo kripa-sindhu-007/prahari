@@ -230,3 +230,45 @@ describe("PRAHARI_SKIP_VALIDATION does not leak out of loadSchema", () => {
     expect(out()).toContain("DATABASE_URL");
   });
 });
+
+describe("doctor colourises its report", () => {
+  const ANSI = /\x1b\[/; // eslint-disable-line no-control-regex
+
+  it("paints the failure table when colour is enabled", async () => {
+    const dir = fixture();
+    const { io, out } = capture(dir, {});
+    process.env.FORCE_COLOR = "1";
+    try {
+      expect(await run(["doctor"], io)).toBe(1);
+    } finally {
+      delete process.env.FORCE_COLOR;
+    }
+    expect(out()).toMatch(ANSI);
+    expect(out()).toContain("DATABASE_URL");
+  });
+
+  it("stays plain when NO_COLOR is set", async () => {
+    const dir = fixture();
+    const { io, out } = capture(dir, {});
+    process.env.NO_COLOR = "1";
+    try {
+      await run(["doctor"], io);
+    } finally {
+      delete process.env.NO_COLOR;
+    }
+    expect(out()).not.toMatch(ANSI);
+  });
+
+  it("never colours the --json payload", async () => {
+    const dir = fixture();
+    const { io, out } = capture(dir, {});
+    process.env.FORCE_COLOR = "1";
+    try {
+      await run(["doctor", "--json"], io);
+    } finally {
+      delete process.env.FORCE_COLOR;
+    }
+    expect(out()).not.toMatch(ANSI);
+    expect(() => JSON.parse(out())).not.toThrow();
+  });
+});

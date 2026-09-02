@@ -5,8 +5,9 @@
 [![website](https://img.shields.io/badge/website-prahari-22C55E.svg)](https://prahari-azure.vercel.app)
 [![CI](https://github.com/kripa-sindhu-007/prahari/actions/workflows/ci.yml/badge.svg)](https://github.com/kripa-sindhu-007/prahari/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/prahari.svg)](https://www.npmjs.com/package/prahari)
-[![coverage](https://img.shields.io/badge/coverage-%3E95%25-brightgreen.svg)](#testing)
+[![coverage](https://img.shields.io/badge/coverage-%3E97%25-brightgreen.svg)](#testing)
 [![types](https://img.shields.io/badge/types-included-blue.svg)](https://arethetypeswrong.github.io/?p=prahari)
+[![provenance](https://img.shields.io/badge/npm-signed%20provenance-6E56CF.svg)](https://www.npmjs.com/package/prahari)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 > Type-safe, self-documenting environment variables for TypeScript — fail loudly at boot, and never let your `.env.example` drift from reality.
@@ -16,6 +17,12 @@ misconfigured deploy doesn't fail when you ship it, it fails **later, in product
 from the cause. **prahari** turns those strings into a typed, validated, frozen config that
 crashes at startup with a readable report — and gives you a CLI that keeps your
 `.env.example` and docs honest automatically.
+
+<img src="https://raw.githubusercontent.com/kripa-sindhu-007/prahari/main/assets/demo.svg" alt="prahari doctor reporting three invalid environment variables with the secret redacted, then prahari sync catching .env.example drift and exiting 1" width="687">
+
+*First the boot report — every problem at once, with the secret redacted. Then the part
+nobody else has: `prahari sync` failing the build because `.env.example` no longer matches
+the schema.*
 
 - **Type-safe** — `port()` → `number`, `oneOf([...])` → a literal union, all inferred.
 - **Fails at boot, not in prod** — one readable table of everything that's wrong.

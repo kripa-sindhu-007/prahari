@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { defineEnv, str, num, port, bool, url, oneOf, json, type Validator } from "../src/index";
+import { formatReport } from "../src/report";
 import { parseEnvKeys, computeDrift, hasDrift } from "../src/cli/sync";
 import { renderEnvExample } from "../src/cli/example";
 import { renderDocs } from "../src/cli/docs";
@@ -139,5 +140,45 @@ describe("defensive: non-EnvFieldError propagates", () => {
     const { failures } = runDoctor({ K: str().secret() }, {});
     expect(failures[0]!.received).toBeUndefined();
     expect(failures[0]!.reason).toMatch(/required/);
+  });
+});
+
+describe("formatReport painting", () => {
+  const failures = [
+    { key: "PORT", reason: "must be a number", received: "abc", expected: "port" },
+    { key: "DATABASE_URL", reason: "is required but was not set", received: undefined, expected: "url" },
+  ];
+
+  it("is plain by default — it ends up inside an Error.message", () => {
+    const out = formatReport(failures);
+    // eslint-disable-next-line no-control-regex
+    expect(out).not.toMatch(/\x1b\[/);
+    expect(out).toContain("  ✗ PORT          (port)  must be a number  received: \"abc\"");
+  });
+
+  it("paints each part when asked, without breaking the columns", () => {
+    const mark = (name: string) => (s: string) => `<${name}>${s}</${name}>`;
+    const out = formatReport(failures, {
+      heading: mark("h"),
+      cross: mark("x"),
+      key: mark("k"),
+      type: mark("t"),
+      reason: mark("r"),
+      received: mark("v"),
+    });
+    expect(out).toContain("<h>prahari: 2 environment variables failed validation</h>");
+    expect(out).toContain("<x>✗</x>");
+    // Padding is applied to the RAW text before painting, so the columns survive
+    // — an ANSI escape counts toward String.length and would shift them.
+    expect(out).toContain("<k>PORT        </k>");
+    expect(out).toContain("<k>DATABASE_URL</k>");
+    expect(out).toContain("<t>(port)</t>");
+    expect(out).toContain("<v>  received: \"abc\"</v>");
+  });
+
+  it("omits an empty received rather than painting nothing", () => {
+    const out = formatReport(failures, { received: (s) => `<v>${s}</v>` });
+    expect(out).toContain("<v></v>"); // the absent one paints an empty string
+    expect(out).not.toContain("received: undefined");
   });
 });
