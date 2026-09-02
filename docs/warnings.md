@@ -57,6 +57,8 @@ prahari: STALE_KEY is set but not declared in the schema
 
 - `"ignore"` (default) · `"warn"` · `"error"` — `"error"` turns unknowns into
   ordinary report failures (`is not declared in the schema`), so CI fails.
+- **An empty value counts as unset**, so `STALE=` is not reported. That is the
+  same rule the validators use, and it keeps placeholder entries quiet.
 - **Do not point it at `process.env`.** It carries `PATH`, `HOME`, `SHELL` and a
   hundred others; every one of them would be "unknown". Point it at a loaded
   `.env` or an explicit record.
@@ -108,5 +110,12 @@ prahari doctor --json                       # warnings[] in the payload
 ```
 
 `--strict` requires `--env-file` for the reason above: reporting "unknown"
-against the process environment is noise, not signal. See
-[ci.md](./ci.md) for wiring the JSON output into a pipeline.
+against the process environment is noise, not signal.
+
+Note the CLI check is about **declaration**, not value — it reports every key the
+file declares and the schema does not, including `STALE=` with no value, because
+a stale leftover in a file is worth seeing whether or not it holds anything. Its
+message says so: `STALE_KEY is in the env file but not declared in the schema`.
+The `unknown` option above is the value-based counterpart.
+
+See [ci.md](./ci.md) for wiring the JSON output into a pipeline.

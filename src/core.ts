@@ -227,6 +227,11 @@ function run<S extends EnvSchema>(
   if (policy !== "ignore") {
     for (const key of enumerateSource(source)) {
       if (Object.prototype.hasOwnProperty.call(schema, key)) continue;
+      // An empty value means UNSET everywhere else in prahari, so `STALE=` is
+      // not "set but not declared" — reporting it would contradict the rule the
+      // validators use and add noise for placeholder entries.
+      const raw = readFrom(source, key);
+      if (raw === undefined || raw === "") continue;
       if (policy === "error") {
         failures.push({
           key,

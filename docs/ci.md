@@ -64,8 +64,9 @@ prahari sync --json
 ```
 
 Secrets stay redacted in JSON exactly as in the human report — a `secret()` field
-reports `"received": "***"`. An absent value is `null`, never the string
-`"undefined"`.
+reports `"received": "***"`. A value that is absent — or explicitly empty, which
+prahari treats the same way — is `null`, never the string `"undefined"` and never
+`""`, so a `jq` pipeline needs no special case.
 
 ### Building a job summary
 

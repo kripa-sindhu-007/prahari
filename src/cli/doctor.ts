@@ -2,17 +2,18 @@
  * `prahari doctor` — validate the CURRENT environment against the schema and
  * print a per-variable red/green table.
  *
- * Pure evaluator (unit-testable); the command wrapper prints + sets exit code.
+ * The validation itself is the core's (`safeParse`); this module only turns the
+ * result into what the command prints. That is deliberate: one evaluator means
+ * `doctor` cannot disagree with what happens at boot, and it inherits bare
+ * Standard Schema support, redaction, conditional requirements and deprecation
+ * warnings for free instead of re-implementing each one.
+ *
+ * Pure functions (unit-testable); the command wrapper prints + sets exit code.
  */
 
-import type { EnvWarning } from "../core.js";
-import { isEnvFieldError, type FieldFailure } from "../errors.js";
-import {
-  conditionalFailure,
-  deprecationMessage,
-  type EnvSchema,
-  type Validator,
-} from "../validators.js";
+import { safeParse, type EnvWarning } from "../core.js";
+import type { FieldFailure } from "../errors.js";
+import type { EnvSchema } from "../validators.js";
 
 export interface DoctorResult {
   ok: string[];
@@ -58,7 +59,10 @@ export function renderDoctorJson(schema: EnvSchema, result: DoctorResult): strin
       status: "invalid",
       reason: failure.reason,
       expected: failure.expected,
-      received: failure.received ?? null,
+      // An empty value means UNSET in prahari, and the human report suppresses
+      // it — so JSON reports it as null too, rather than making every consumer
+      // special-case the empty string.
+      received: failure.received === undefined || failure.received === "" ? null : failure.received,
     };
   });
   const payload: DoctorJson = {
@@ -69,74 +73,33 @@ export function renderDoctorJson(schema: EnvSchema, result: DoctorResult): strin
   return `${JSON.stringify(payload, null, 2)}\n`;
 }
 
-function redact(raw: string | undefined): string | undefined {
-  if (raw === undefined || raw === "") return raw;
-  return "***";
-}
-
 export function runDoctor(
   schema: EnvSchema,
   source: Record<string, string | undefined> = process.env,
   options: DoctorOptions = {},
 ): DoctorResult {
-  const ok: string[] = [];
-  const failures: FieldFailure[] = [];
-  const warnings: EnvWarning[] = [];
-  const resolved: Record<string, unknown> = {};
+  // Delegate the actual validation to the core rather than re-implementing it.
+  // `safeParse` already handles bare Standard Schema fields, secret redaction,
+  // conditional requirements and deprecation warnings — a second implementation
+  // here is how `doctor` and a real boot drift apart (and how `doctor` used to
+  // crash on a bare Valibot field, which has no `.parse` method of its own).
+  const result = safeParse(schema, { source, onWarn: () => {} });
+  const failures = result.success ? [] : result.error.failures;
+  const failed = new Set(failures.map((f) => f.key));
+  const ok = Object.keys(schema).filter((key) => !failed.has(key));
+  const warnings = [...result.warnings];
 
-  for (const key of Object.keys(schema)) {
-    const validator = schema[key] as Validator<unknown>;
-    const raw = source[key];
-    const deprecated = validator.meta?.deprecated;
-    if (deprecated && raw !== undefined && raw !== "") {
-      warnings.push({
-        kind: "deprecated",
-        key,
-        message: deprecationMessage(key, deprecated.message),
-      });
-    }
-    try {
-      resolved[key] = validator.parse(raw);
-      ok.push(key);
-    } catch (err) {
-      if (isEnvFieldError(err)) {
-        failures.push({
-          key,
-          reason: err.message,
-          received: validator.meta.secret ? redact(raw) : raw,
-          expected: validator.meta.typeName,
-        });
-      } else {
-        throw err;
-      }
-    }
-  }
-
-  // Conditional requirements can only be judged once everything else resolved —
-  // same second pass as `defineEnv`, via the same shared helper, so `doctor` and
-  // a real boot can never disagree.
-  for (const key of Object.keys(schema)) {
-    if (resolved[key] !== undefined) continue;
-    if (failures.some((f) => f.key === key)) continue;
-    const failure = conditionalFailure(key, schema[key]!, resolved);
-    if (!failure) continue;
-    failures.push(failure);
-    const index = ok.indexOf(key);
-    if (index !== -1) ok.splice(index, 1);
-  }
-
+  // Unknown keys are the CLI's own concern: the caller supplies the key set
+  // (the env FILE's keys, never the whole process environment). This is a
+  // declaration check like `sync`, not a value check, so an empty entry still
+  // counts — `STALE=` in a file is exactly the stale leftover worth reporting.
   for (const key of options.unknownKeys ?? []) {
     if (Object.prototype.hasOwnProperty.call(schema, key)) continue;
     warnings.push({
       kind: "unknown",
       key,
-      message: `${key} is set but not declared in the schema`,
+      message: `${key} is in the env file but not declared in the schema`,
     });
-  }
-
-  if (failures.length > 1) {
-    const order = Object.keys(schema);
-    failures.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
   }
 
   return { ok, failures, warnings };

@@ -212,3 +212,21 @@ describe("doctor --env-file", () => {
     expect(err()).toContain("env file not found");
   });
 });
+
+describe("PRAHARI_SKIP_VALIDATION does not leak out of loadSchema", () => {
+  it("is cleared after the config is loaded, so later validation still runs", async () => {
+    const dir = fixture();
+    const { io } = capture(dir, {});
+    await run(["docs"], io);
+    // Left set, every later defineEnv/safeParse in this process would silently
+    // no-op — including the one `doctor` uses to validate.
+    expect(process.env.PRAHARI_SKIP_VALIDATION).toBeUndefined();
+  });
+
+  it("doctor still detects an invalid environment after a load", async () => {
+    const dir = fixture();
+    const { io, out } = capture(dir, {});
+    expect(await run(["doctor"], io)).toBe(1);
+    expect(out()).toContain("DATABASE_URL");
+  });
+});

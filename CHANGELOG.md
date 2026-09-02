@@ -98,6 +98,16 @@ runtimes with no `process`. `.env` loading lives behind its own entry point
 - `standard()` accepts `deprecated` in its metadata, so a Zod/Valibot/ArkType field
   can be deprecated exactly like a built-in.
 
+### Fixed
+- `prahari doctor` crashed on a **bare Standard Schema field**. It assumed every
+  schema entry was a prahari `Validator` and called `.parse()` — which a Valibot
+  schema does not have — so `doctor` died with a `TypeError` on a schema
+  `defineEnv` validates happily. It now delegates validation to the core, so the
+  CLI and a real boot share one evaluator and cannot disagree.
+- `PRAHARI_SKIP_VALIDATION` leaked out of the CLI's config loader. It is now
+  restored afterwards; left set, every later `defineEnv`/`safeParse` in the
+  process would silently no-op.
+
 ### Changed
 - Coverage threshold raised from 95% to 97% on all four metrics.
 - `VERSION` is now checked against `package.json` by a test — two sources of truth

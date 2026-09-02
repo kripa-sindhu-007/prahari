@@ -46,13 +46,22 @@ export function resolveConfigPath(
 
 /** Import the config for its schema only (no validation). */
 export async function loadSchema(configPath: string): Promise<EnvSchema> {
+  const previous = process.env.PRAHARI_SKIP_VALIDATION;
   process.env.PRAHARI_SKIP_VALIDATION = "1";
   clearRegistry();
-  // moduleCache:false so re-loading the same config path re-runs defineEnv
-  // (otherwise a second load after clearRegistry() would see an empty schema).
-  const jiti = createJiti(pathToFileURL(configPath).href, { moduleCache: false });
-  await jiti.import(configPath);
-  return getRegisteredSchema();
+  try {
+    // moduleCache:false so re-loading the same config path re-runs defineEnv
+    // (otherwise a second load after clearRegistry() would see an empty schema).
+    const jiti = createJiti(pathToFileURL(configPath).href, { moduleCache: false });
+    await jiti.import(configPath);
+    return getRegisteredSchema();
+  } finally {
+    // Restore it. The flag exists only for the duration of the import; leaving
+    // it set would make every later `defineEnv`/`safeParse` in this process a
+    // no-op — which is exactly what `doctor` calls to validate.
+    if (previous === undefined) delete process.env.PRAHARI_SKIP_VALIDATION;
+    else process.env.PRAHARI_SKIP_VALIDATION = previous;
+  }
 }
 
 export const CONFIG_CANDIDATES = CANDIDATES;

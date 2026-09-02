@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url";
 import { renderDoctorJson, runDoctor, type DoctorJson } from "../src/cli/doctor";
 import { computeDrift, parseEnvKeys, renderSyncJson, type SyncJson } from "../src/cli/sync";
 import { run, type RunIO } from "../src/cli/run";
-import { port, str, url } from "../src/index";
+import { port, safeParse, str, url } from "../src/index";
+import { z } from "zod";
+import * as v from "valibot";
 import { clearRegistry } from "../src/registry";
 
 /** #29 — machine-readable output for CI. */
@@ -208,7 +210,7 @@ export const env = defineEnv({ PORT: port().default(3000), DATABASE_URL: str() }
     const dir = fixture(SCHEMA, { ".env": "DATABASE_URL=postgres://x\nSTALE_KEY=1\n" });
     const { io, out } = capture(dir, {});
     expect(await run(["doctor", "--strict", "--env-file", ".env"], io)).toBe(0);
-    expect(out()).toContain("STALE_KEY is set but not declared in the schema");
+    expect(out()).toContain("STALE_KEY is in the env file but not declared in the schema");
   });
 
   it("does not flag the shell's unrelated variables", async () => {
@@ -232,7 +234,46 @@ export const env = defineEnv({ PORT: port().default(3000), DATABASE_URL: str() }
     const { io, out } = capture(dir, {});
     await run(["doctor", "--strict", "--env-file", ".env", "--json"], io);
     expect((JSON.parse(out()) as DoctorJson).warnings).toEqual([
-      { kind: "unknown", key: "STALE_KEY", message: "STALE_KEY is set but not declared in the schema" },
+      { kind: "unknown", key: "STALE_KEY", message: "STALE_KEY is in the env file but not declared in the schema" },
     ]);
+  });
+});
+
+describe("review follow-ups (PR #34)", () => {
+  it("doctor validates a BARE Standard Schema field instead of crashing", () => {
+    // runDoctor used to assume every field was a prahari Validator and call
+    // .parse() on it — a bare Valibot schema has no such method, so `prahari
+    // doctor` died with a TypeError on a schema `defineEnv` handles fine.
+    const schema = { REGION: z.enum(["us", "eu"]), API: v.pipe(v.string(), v.url()) };
+
+    const good = runDoctor(schema, { REGION: "us", API: "https://api.example" });
+    expect(good.ok).toEqual(["REGION", "API"]);
+    expect(good.failures).toEqual([]);
+
+    const bad = runDoctor(schema, { REGION: "mars", API: "not-a-url" });
+    expect(bad.ok).toEqual([]);
+    expect(bad.failures.map((f) => f.key)).toEqual(["REGION", "API"]);
+    // ...and it reports them the way the boot report would, by vendor.
+    expect(bad.failures.map((f) => f.expected)).toEqual(["zod", "valibot"]);
+  });
+
+  it("doctor agrees with defineEnv on a mixed schema", () => {
+    const schema = { PORT: port(), REGION: z.enum(["us", "eu"]) };
+    const source = { PORT: "not-a-port", REGION: "mars" };
+
+    const doctored = runDoctor(schema, source);
+    const parsed = safeParse(schema, { source, onWarn: () => {} });
+    if (parsed.success) throw new Error("expected failure");
+    expect(doctored.failures).toEqual(parsed.error.failures);
+  });
+
+  it("reports an explicitly empty value as null, like the human report", () => {
+    // `KEY=` means UNSET in prahari; the human report suppresses the value, so
+    // JSON says null rather than "" and pipelines need no special case.
+    const schema = { TOKEN: str() };
+    const payload = JSON.parse(
+      renderDoctorJson(schema, runDoctor(schema, { TOKEN: "" })),
+    ) as DoctorJson;
+    expect(payload.variables[0]?.received).toBeNull();
   });
 });

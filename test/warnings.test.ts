@@ -225,3 +225,34 @@ describe("deprecation in the CLI renderers", () => {
     expect(out).toContain("**Deprecated** — use API_URL instead");
   });
 });
+
+describe("unknown variables — the empty-value rule (PR #34 review)", () => {
+  it("does not flag a key whose value is empty", () => {
+    const { warnings, onWarn } = collect();
+    // `STALE=` means UNSET everywhere else in prahari, so calling it "set but
+    // not declared" would contradict the rule the validators use.
+    defineEnv(
+      { PORT: port() },
+      { source: { PORT: "80", STALE: "", ALSO: undefined }, onWarn, unknown: "warn" },
+    );
+    expect(warnings).toEqual([]);
+  });
+
+  it("does not fail on an empty unknown key in error mode either", () => {
+    expect(() =>
+      defineEnv(
+        { PORT: port() },
+        { source: { PORT: "80", STALE: "" }, unknown: "error", onWarn: () => {} },
+      ),
+    ).not.toThrow();
+  });
+
+  it("still flags one that genuinely has a value", () => {
+    const { warnings, onWarn } = collect();
+    defineEnv(
+      { PORT: port() },
+      { source: { PORT: "80", STALE: "leftover" }, onWarn, unknown: "warn" },
+    );
+    expect(warnings.map((w) => w.key)).toEqual(["STALE"]);
+  });
+});
