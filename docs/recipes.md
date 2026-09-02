@@ -12,6 +12,8 @@ names to your app. New to prahari? Start with the [README](../README.md).
 - [Vite: server/client split](#vite-serverclient-split)
 - [Monorepo: share a base schema](#monorepo-share-a-base-schema)
 - [Test code that reads env](#test-code-that-reads-env)
+- [A bespoke type, without a schema library](#a-bespoke-type-without-a-schema-library)
+- [Edge runtimes (no `process.env`)](#edge-runtimes-no-processenv)
 - [Keep `.env.example` honest in CI](#keep-envexample-honest-in-ci)
 - [Secrets and redaction](#secrets-and-redaction)
 - [Defaults, optional, and the empty-string rule](#defaults-optional-and-the-empty-string-rule)
@@ -123,16 +125,18 @@ Full example: [`examples/vite/env.ts`](../examples/vite/env.ts).
 
 ## Monorepo: share a base schema
 
-Compose schemas by spreading. Each package extends a shared base; later keys win.
+`defineSchema` declares a base that each package extends. Later keys win, at
+runtime and in the inferred type. `.extend()` returns a **new** schema — one
+app's extension can never mutate what the others see.
 
 ```ts
 // packages/config/base.ts
-import { str, oneOf } from "prahari";
+import { defineSchema, oneOf } from "prahari";
 
-export const base = {
+export const base = defineSchema({
   NODE_ENV: oneOf(["development", "production", "test"]).default("development"),
   LOG_LEVEL: oneOf(["debug", "info", "warn", "error"]).default("info"),
-};
+});
 ```
 
 ```ts
@@ -140,12 +144,21 @@ export const base = {
 import { defineEnv, port, str } from "prahari";
 import { base } from "@acme/config/base";
 
-export const env = defineEnv({
-  ...base,
-  PORT: port().default(3000),
-  DATABASE_URL: str(),
-});
+export const env = defineEnv(
+  base.extend({
+    PORT: port().default(3000),
+    DATABASE_URL: str(),
+  }),
+);
+// env.LOG_LEVEL -> "debug" | "info" | "warn" | "error"
+// env.PORT      -> number
 ```
+
+`.merge(other)` does the same with another schema (plain or composed), and both
+verbs chain. Plain records still work everywhere a composed schema does —
+`defineEnv({ ...base.fields, PORT: port() })` is equivalent.
+
+See [composition.md](./composition.md) for the full picture.
 
 ## Test code that reads env
 
@@ -161,6 +174,64 @@ const env = defineEnv(
 );
 expect(env.PORT).toBe(8080);
 ```
+
+To assert on *invalid* config without try/catch, use `safeParse`:
+
+```ts
+import { safeParse, port } from "prahari";
+
+const result = safeParse({ PORT: port() }, { source: { PORT: "not-a-port" } });
+expect(result.success).toBe(false);
+if (!result.success) {
+  expect(result.error.failures[0].key).toBe("PORT");
+}
+```
+
+## A bespoke type, without a schema library
+
+`custom()` takes a function from the raw string to your type; throw to fail.
+`.transform()` post-processes a built-in into a derived type.
+
+```ts
+import { defineEnv, custom, str } from "prahari";
+
+export const env = defineEnv({
+  // one-off validator — the whole thing, zero dependencies
+  REGION: custom(
+    (raw) => {
+      if (!/^[a-z]{2}-[a-z]+-\d$/.test(raw)) throw new Error("must look like us-east-1");
+      return raw;
+    },
+    { desc: "AWS region", example: "us-east-1" },
+  ),
+  // built-in first, then reshape — ORIGINS is string[]
+  ORIGINS: str().transform((s) => s.split(",").map((o) => o.trim())).default([]),
+});
+```
+
+The thrown message becomes that variable's row in the boot report, alongside
+every other failure. See [extensibility.md](./extensibility.md).
+
+## Edge runtimes (no `process.env`)
+
+Cloudflare Workers and friends have no `process`. Pass the runtime's own
+bindings as the `source` — prahari never reaches for `process.env` when you do.
+
+```ts
+import { defineEnv, str, url } from "prahari";
+
+const schema = { API_TOKEN: str().secret(), UPSTREAM_URL: url() };
+
+export default {
+  fetch(request: Request, env: Record<string, string | undefined>) {
+    const config = defineEnv(schema, { source: env }); // <- Workers bindings
+    return fetch(config.UPSTREAM_URL, { headers: { authorization: config.API_TOKEN } });
+  },
+};
+```
+
+A source can also be anything with a synchronous `get(key)`. See
+[sources.md](./sources.md).
 
 ## Keep `.env.example` honest in CI
 

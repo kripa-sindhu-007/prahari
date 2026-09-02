@@ -9,11 +9,15 @@
 
 export const VERSION = "0.3.0";
 
-export { defineEnv } from "./core.js";
-export type { DefineEnvOptions } from "./core.js";
-export { str, num, port, bool, url, oneOf, json } from "./validators.js";
+export { defineEnv, safeParse } from "./core.js";
+export type { DefineEnvOptions, EnvSource, SafeParseResult } from "./core.js";
+export { defineSchema, isComposedSchema } from "./schema.js";
+export type { ComposedSchema, MergeSchemas, SchemaInput } from "./schema.js";
+export { str, num, port, bool, url, oneOf, json, custom } from "./validators.js";
 export { standard, isStandardSchema } from "./validators.js";
 export type {
+  CustomMeta,
+  DerivedValidator,
   Validator,
   Infer,
   EnvSchema,

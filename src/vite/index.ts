@@ -18,6 +18,7 @@
  */
 
 import { defineClientServerEnv } from "../adapter.js";
+import type { ComposedSchema } from "../schema.js";
 import type { EnvSchema, InferEnv } from "../validators.js";
 
 const DEFAULT_CLIENT_PREFIX = "VITE_";
@@ -27,9 +28,9 @@ export interface DefineViteEnvOptions<
   Client extends EnvSchema,
 > {
   /** Server-only variables (e.g. read from `process.env`). Never sent to the browser. */
-  server?: Server;
+  server?: Server | ComposedSchema<Server>;
   /** Browser-exposed variables. Every key must carry the client prefix. */
-  client?: Client;
+  client?: Client | ComposedSchema<Client>;
   /**
    * Explicit runtime values, e.g. `{ DATABASE_URL: process.env.DATABASE_URL,
    * VITE_API_URL: import.meta.env.VITE_API_URL }`. Required because Vite only

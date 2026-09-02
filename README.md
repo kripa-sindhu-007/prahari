@@ -154,12 +154,87 @@ lost afternoon for the next person who clones the repo.
 | `url()` | `string` | valid URL, `.protocol("https")` |
 | `oneOf([...])` | union | narrows to the literal union |
 | `json<T>()` | `T` | `JSON.parse` |
+| `custom<T>(fn)` | `T` | your function, zero dependencies — throw to fail |
 
-Shared modifiers: `.default(value)` · `.optional()` · `.desc(text)` · `.secret()`.
+Shared modifiers: `.default(value)` · `.optional()` · `.desc(text)` · `.secret()` ·
+`.transform(fn)`.
 
 **Defaults are typed values, not re-parsed strings** — `.default(3000)` is the number `3000`,
 full stop. And an explicitly empty env var (`FOO=`) counts as **unset**, so it flows through
 your default / optional / required rules rather than silently coercing.
+
+Need a type nothing here covers? `custom()` and `.transform()` handle it without pulling in a
+schema library:
+
+```ts
+const env = defineEnv({
+  REGION: custom((raw) => {
+    if (!/^[a-z]{2}-[a-z]+-\d$/.test(raw)) throw new Error("must look like us-east-1");
+    return raw;
+  }),
+  ORIGINS: str().transform((s) => s.split(",")).default([]),  // -> string[]
+});
+```
+
+The thrown message becomes that variable's row in the same boot report as everything else.
+Details: [docs/extensibility.md](docs/extensibility.md).
+
+---
+
+## Composable schemas (monorepos)
+
+Declare a base once, extend it per app. Later keys win — in the type as well as at runtime —
+and `.extend()` never mutates the base, so two apps sharing it stay independent.
+
+```ts
+import { defineSchema, defineEnv, oneOf, port, str } from "prahari";
+
+// packages/config/base.ts
+export const base = defineSchema({
+  LOG_LEVEL: oneOf(["debug", "info", "warn", "error"]).default("info"),
+});
+
+// apps/api/env.ts
+export const env = defineEnv(base.extend({ PORT: port().default(3000), DATABASE_URL: str() }));
+```
+
+A composed schema works anywhere a plain record does — including the adapters and the whole
+CLI. Details: [docs/composition.md](docs/composition.md).
+
+---
+
+## `safeParse`
+
+The non-throwing variant, for tests, health checks, and tooling that wants to report rather
+than crash. Same pipeline as `defineEnv`, so the two can never disagree.
+
+```ts
+import { safeParse, port } from "prahari";
+
+const result = safeParse({ PORT: port() }, { source: { PORT: "not-a-port" } });
+if (!result.success) {
+  console.error(result.error.failures);  // [{ key: "PORT", reason: "must be a number", … }]
+}
+```
+
+Also available as `defineEnv.safeParse`.
+
+---
+
+## Where values come from
+
+`defineEnv` reads `process.env` by default, or any `source` you pass — a plain record, or
+anything with a synchronous `get(key)`:
+
+```ts
+defineEnv(schema, { source: workerEnv });                    // Cloudflare Workers bindings
+defineEnv(schema, { source: { PORT: "8080" } });             // test fixture
+defineEnv(schema, { source: { get: (k) => myStore.read(k) } }); // your own resolver
+```
+
+On a runtime with no `process` at all, prahari reports missing variables normally instead of
+dying with `ReferenceError: process is not defined`. Details, including why sources are
+synchronous: [docs/sources.md](docs/sources.md).
 
 ---
 
@@ -272,8 +347,12 @@ on the client throws. Full example in [`examples/vite/env.ts`](examples/vite/env
 ## Recipes
 
 Copy-pasteable patterns for the common cases — boot validation, bring-your-own-schema,
-the Next.js and Vite splits, sharing a base schema across a monorepo, testing code that
-reads env, CI drift-checking, and secrets — live in **[docs/recipes.md](docs/recipes.md)**.
+the Next.js and Vite splits, sharing a base schema across a monorepo, custom types, edge
+runtimes, testing code that reads env, CI drift-checking, and secrets — live in
+**[docs/recipes.md](docs/recipes.md)**.
+
+Deeper references: [composition](docs/composition.md) · [value sources](docs/sources.md) ·
+[custom types](docs/extensibility.md).
 
 ---
 
@@ -290,13 +369,13 @@ the classic unit/integration/e2e trio can't see — the *types* and the *publish
 
 ```bash
 pnpm test          # unit + integration
-pnpm test:cov      # + coverage (95% threshold enforced)
+pnpm test:cov      # + coverage (97% threshold enforced)
 pnpm test:types    # type-level
 pnpm test:package  # publint + attw
 pnpm test:all      # everything
 ```
 
-Coverage sits above 95% on statements, branches, functions, and lines.
+Coverage sits above 97% on statements, branches, functions, and lines.
 
 ---
 

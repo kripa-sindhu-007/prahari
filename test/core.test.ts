@@ -119,3 +119,22 @@ describe("defineEnv — registry & introspection", () => {
     expect(Object.keys(getRegisteredSchema()).sort()).toEqual(["PORT", "URL"]);
   });
 });
+
+describe("defineEnv — secret redaction edges", () => {
+  it("reports an explicitly empty secret as empty, not as ***", () => {
+    let error: EnvValidationError | undefined;
+    try {
+      defineEnv({ TOKEN: str().secret() }, { source: { TOKEN: "" } });
+    } catch (e) {
+      error = e as EnvValidationError;
+    }
+    // An empty value is already no secret to leak — redacting it would only
+    // hide that the variable is set-but-blank.
+    expect(error?.failures[0]).toEqual({
+      key: "TOKEN",
+      reason: "is required but was not set",
+      received: "",
+      expected: "string",
+    });
+  });
+});
