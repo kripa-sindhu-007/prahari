@@ -3,10 +3,19 @@
 All notable changes to **prahari** are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## [1.0.0] - 2026-09-02
 
-The v1.0 core API surface. Everything here is **backward-compatible** — no
-existing call signature changes, nothing is removed.
+**The API is now stable.** Everything documented in `docs/api.md` is frozen:
+additions will be minor releases, and anything removed or renamed would be a
+major one. Two tests pin that promise — one over the runtime exports, one over
+the exported types — so a rename fails prahari's build rather than yours.
+
+Upgrading from `0.3.x` is **backward-compatible**. No existing call signature
+changed and nothing was removed; everything below is new surface.
+
+The runtime entry stays **zero-dependency** and runs anywhere, including edge
+runtimes with no `process`. `.env` loading lives behind its own entry point
+(`prahari/env-file`) precisely so that stays true.
 
 ### Added
 - **Composable schemas** (#5) — `defineSchema(fields)` returns a schema with
@@ -61,8 +70,51 @@ existing call signature changes, nothing is removed.
   `prahari doctor --env-file <path>`. See `docs/env-files.md` for the stance:
   Node's `--env-file` and dotenv remain first-class alternatives.
 
+- **Machine-readable CLI output** (#29) — `prahari doctor --json` and
+  `prahari sync --json` print structured results with the same exit codes, for CI
+  and tooling. Secrets stay redacted (`"received": "***"`) and an absent value is
+  `null`, never the string `"undefined"`. Human output is unchanged without the
+  flag. See `docs/ci.md`.
+- **Deprecation warnings** (#30) — `.deprecated("use API_URL instead")` keeps
+  validating the variable but warns when it is actually **set** (warning about one
+  nobody uses only trains people to ignore warnings). `prahari docs` and
+  `.env.example` mark the field too.
+- **Unknown-variable detection** (#30) — opt-in `{ unknown: "warn" | "error" }` on
+  `defineEnv`/`safeParse`, plus `prahari doctor --strict --env-file <path>`, which
+  reports variables the file declares and the schema does not. `--strict` requires
+  `--env-file`: run against `process.env` it would flag `PATH`, `HOME` and every
+  other unrelated variable. Requires an enumerable source — a `get(key)` source
+  cannot be listed, so the check is skipped for one.
+- **Warning plumbing** — warnings go to `console.warn` as one `prahari: …` line
+  (stderr, once per process at module scope); `onWarn` redirects or silences them,
+  and `safeParse` now returns `warnings: EnvWarning[]` on both branches. Nothing is
+  emitted unless the schema asked for it. See `docs/warnings.md`.
+
+- **API reference** (#31) — `docs/api.md` records the complete public surface of all
+  four entry points, the three chaining rules, what is explicitly *not* public, and
+  what is deferred past 1.0. A test (`test/public-api.test.ts`) pins the export list
+  and the declared entry points, so a rename or an accidental export fails the build
+  instead of someone else's.
+- `standard()` accepts `deprecated` in its metadata, so a Zod/Valibot/ArkType field
+  can be deprecated exactly like a built-in.
+
+### Fixed
+- `prahari doctor` crashed on a **bare Standard Schema field**. It assumed every
+  schema entry was a prahari `Validator` and called `.parse()` — which a Valibot
+  schema does not have — so `doctor` died with a `TypeError` on a schema
+  `defineEnv` validates happily. It now delegates validation to the core, so the
+  CLI and a real boot share one evaluator and cannot disagree.
+- `PRAHARI_SKIP_VALIDATION` leaked out of the CLI's config loader. It is now
+  restored afterwards; left set, every later `defineEnv`/`safeParse` in the
+  process would silently no-op.
+
 ### Changed
 - Coverage threshold raised from 95% to 97% on all four metrics.
+- `VERSION` is now checked against `package.json` by a test — two sources of truth
+  for the version was one too many.
+- CI/release workflows: `actions/checkout@v5`, `actions/setup-node@v5`,
+  `actions/upload-artifact@v7` and `actions/download-artifact@v8` — the `@v4` line
+  targets Node 20, which GitHub has deprecated on its runners.
 
 ## [0.3.0] - 2026-09-01
 
@@ -152,6 +204,9 @@ Initial public release (published under the name `prahari`).
 - Dual ESM + CJS build with split type definitions; zero runtime dependencies
   for the library entry point.
 
+[1.0.0]: https://github.com/kripa-sindhu-007/prahari/releases/tag/v1.0.0
+[0.3.0]: https://github.com/kripa-sindhu-007/prahari/releases/tag/v0.3.0
+[0.2.0]: https://github.com/kripa-sindhu-007/prahari/releases/tag/v0.2.0
 [0.1.2]: https://github.com/kripa-sindhu-007/prahari/releases/tag/v0.1.2
 [0.1.1]: https://github.com/kripa-sindhu-007/prahari/releases/tag/v0.1.1
 [0.1.0]: https://github.com/kripa-sindhu-007/prahari/releases/tag/v0.1.0

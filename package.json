@@ -1,6 +1,6 @@
 {
   "name": "prahari",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "description": "Type-safe env vars for TypeScript with a drift-proof CLI — validated at boot, bring your own Zod/Valibot/ArkType, plus Next.js & Vite server/client guards.",
   "type": "module",
   "license": "MIT",

@@ -39,3 +39,20 @@ export function computeDrift(schema: EnvSchema, fileKeys: Set<string>): Drift {
 export function hasDrift(drift: Drift): boolean {
   return drift.missing.length > 0 || drift.unknown.length > 0;
 }
+
+export interface SyncJson extends Drift {
+  ok: boolean;
+  /** The file that was compared, relative to the working directory. */
+  file: string;
+}
+
+/** Shape the drift result for `--json`. */
+export function renderSyncJson(file: string, drift: Drift): string {
+  const payload: SyncJson = {
+    ok: !hasDrift(drift),
+    file,
+    missing: drift.missing,
+    unknown: drift.unknown,
+  };
+  return `${JSON.stringify(payload, null, 2)}\n`;
+}

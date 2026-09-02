@@ -7,10 +7,16 @@
  * `defineEnv` is the orchestrator; the `str/num/...` factories declare fields.
  */
 
-export const VERSION = "0.3.0";
+export const VERSION = "1.0.0";
 
 export { defineEnv, safeParse } from "./core.js";
-export type { DefineEnvOptions, EnvSource, SafeParseResult } from "./core.js";
+export type {
+  DefineEnvOptions,
+  EnvSource,
+  EnvWarning,
+  SafeParseResult,
+  UnknownPolicy,
+} from "./core.js";
 export { defineSchema, isComposedSchema } from "./schema.js";
 export type { ComposedSchema, MergeSchemas, SchemaInput } from "./schema.js";
 export {

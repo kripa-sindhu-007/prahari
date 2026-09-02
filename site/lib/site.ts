@@ -6,7 +6,7 @@ export const site = {
   repo: "https://github.com/kripa-sindhu-007/prahari",
   npm: "https://www.npmjs.com/package/prahari",
   install: "npm i prahari",
-  version: "0.3.0",
+  version: "1.0.0",
 };
 
 export type Validator = {
@@ -23,9 +23,21 @@ export const validators: Validator[] = [
   { name: "url()", type: "string", notes: "valid URL, .protocol(\"https\")" },
   { name: "oneOf([…])", type: "union", notes: "narrows to the literal union" },
   { name: "json<T>()", type: "T", notes: "JSON.parse into a typed shape" },
+  { name: "list()", type: "T[]", notes: "\"a,b,c\" → array; .of(port()) types the items" },
+  { name: "duration()", type: "number", notes: "\"30s\" \"2h\" → milliseconds" },
+  { name: "bytes()", type: "number", notes: "\"10mb\" \"64kb\" → bytes" },
+  { name: "custom<T>(fn)", type: "T", notes: "your function; throw to fail" },
 ];
 
-export const modifiers = [".default(value)", ".optional()", ".desc(text)", ".secret()"];
+export const modifiers = [
+  ".default(value)",
+  ".optional()",
+  ".desc(text)",
+  ".secret()",
+  ".deprecated(msg)",
+  ".transform(fn)",
+  ".requiredIn(\"production\")",
+];
 
 export type Feature = {
   icon: string; // lucide icon name key (resolved in component)

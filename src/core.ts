@@ -19,6 +19,7 @@ import { normalizeSchema, type SchemaInput } from "./schema.js";
 import {
   ASYNC_STANDARD_MESSAGE,
   conditionalFailure,
+  deprecationMessage,
   formatStandardIssues,
   isPromiseLike,
   isStandardSchema,
@@ -46,15 +47,52 @@ export type EnvSource =
   | Record<string, string | undefined>
   | { get(key: string): string | undefined };
 
+/** Something worth saying out loud that is not a validation failure. */
+export interface EnvWarning {
+  kind: "deprecated" | "unknown";
+  key: string;
+  /** Ready-to-print sentence, already prefixed with the variable name. */
+  message: string;
+}
+
+/** How to treat source keys the schema does not declare. */
+export type UnknownPolicy = "ignore" | "warn" | "error";
+
 export interface DefineEnvOptions {
   /** Where to read raw values from. Defaults to `process.env` (or `{}` without one). */
   source?: EnvSource;
+  /**
+   * Where warnings go. Defaults to a single `prahari: …` line on `console.warn`
+   * (stderr, so structured stdout logging is unaffected). Pass your own logger to
+   * redirect, or `() => {}` to silence.
+   */
+  onWarn?: (warning: EnvWarning) => void;
+  /**
+   * What to do about variables present in the source but absent from the schema.
+   * Defaults to `"ignore"`.
+   *
+   * Requires an **enumerable** source: a `get(key)` source cannot be listed, so
+   * the check is skipped for one. Point this at an explicit record or a loaded
+   * `.env` rather than `process.env`, which carries hundreds of unrelated
+   * variables (`PATH`, `HOME`, …).
+   */
+  unknown?: UnknownPolicy;
 }
 
 /** The outcome of `safeParse` — a discriminated union, never a throw. */
 export type SafeParseResult<S extends EnvSchema> =
-  | { success: true; data: Readonly<InferEnv<S>>; error?: undefined }
-  | { success: false; data?: undefined; error: EnvValidationError };
+  | {
+      success: true;
+      data: Readonly<InferEnv<S>>;
+      error?: undefined;
+      warnings: EnvWarning[];
+    }
+  | {
+      success: false;
+      data?: undefined;
+      error: EnvValidationError;
+      warnings: EnvWarning[];
+    };
 
 function skipValidation(): boolean {
   return (
@@ -98,14 +136,28 @@ function skipProxy<S extends EnvSchema>(): Readonly<InferEnv<S>> {
 function run<S extends EnvSchema>(
   schema: S,
   options: DefineEnvOptions,
-): { data: Readonly<InferEnv<S>>; failures: FieldFailure[] } {
+): { data: Readonly<InferEnv<S>>; failures: FieldFailure[]; warnings: EnvWarning[] } {
   const source = options.source ?? defaultSource();
   const result: Record<string, unknown> = {};
   const failures: FieldFailure[] = [];
+  const warnings: EnvWarning[] = [];
 
   for (const key of Object.keys(schema)) {
     const field = schema[key];
     const raw = readFrom(source, key);
+
+    // A deprecation is a message to the humans, not a failure — and only worth
+    // saying when the variable is actually set.
+    const deprecated = isStandardSchema(field)
+      ? undefined
+      : (field as Validator<unknown>).meta.deprecated;
+    if (deprecated && raw !== undefined && raw !== "") {
+      warnings.push({
+        kind: "deprecated",
+        key,
+        message: deprecationMessage(key, deprecated.message),
+      });
+    }
 
     // Bare Standard Schema (Zod / Valibot / ArkType) — no prahari metadata, so
     // run its own `validate` and map any issues into the same aggregate report.
@@ -170,14 +222,66 @@ function run<S extends EnvSchema>(
     if (failure) failures.push(failure);
   }
 
+  // --- Unknown variables: opt-in, and only for a source we can enumerate. ---
+  const policy = options.unknown ?? "ignore";
+  if (policy !== "ignore") {
+    for (const key of enumerateSource(source)) {
+      if (Object.prototype.hasOwnProperty.call(schema, key)) continue;
+      // An empty value means UNSET everywhere else in prahari, so `STALE=` is
+      // not "set but not declared" — reporting it would contradict the rule the
+      // validators use and add noise for placeholder entries.
+      const raw = readFrom(source, key);
+      if (raw === undefined || raw === "") continue;
+      if (policy === "error") {
+        failures.push({
+          key,
+          reason: "is not declared in the schema",
+          received: undefined,
+          expected: "declared variable",
+        });
+      } else {
+        warnings.push({
+          kind: "unknown",
+          key,
+          message: `${key} is set but not declared in the schema`,
+        });
+      }
+    }
+  }
+
   // Keep the report in schema order even though conditional failures are found
   // in a later pass — the reader is scanning against their own env file.
   if (failures.length > 1) {
     const order = Object.keys(schema);
-    failures.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+    const rank = (key: string) => {
+      const index = order.indexOf(key);
+      // Unknown-variable failures aren't in the schema; keep them after it.
+      return index === -1 ? order.length : index;
+    };
+    failures.sort((a, b) => rank(a.key) - rank(b.key));
   }
 
-  return { data: Object.freeze(result) as Readonly<InferEnv<S>>, failures };
+  return { data: Object.freeze(result) as Readonly<InferEnv<S>>, failures, warnings };
+}
+
+/**
+ * List a source's keys, or nothing if it cannot be listed. A `get(key)` source
+ * has no key set to walk — unknown-variable detection simply does not apply to
+ * it, which is documented rather than silently half-working.
+ */
+function enumerateSource(source: EnvSource): string[] {
+  if (typeof (source as { get?: unknown }).get === "function") return [];
+  return Object.keys(source as Record<string, string | undefined>);
+}
+
+/** Default warning sink: one greppable line on stderr. */
+function defaultWarn(warning: EnvWarning): void {
+  console.warn(`prahari: ${warning.message}`);
+}
+
+function emit(warnings: EnvWarning[], onWarn: DefineEnvOptions["onWarn"]): void {
+  const sink = onWarn ?? defaultWarn;
+  for (const warning of warnings) sink(warning);
 }
 
 function defineEnvImpl<S extends EnvSchema>(
@@ -190,7 +294,8 @@ function defineEnvImpl<S extends EnvSchema>(
 
   if (skipValidation()) return skipProxy<S>();
 
-  const { data, failures } = run(fields, options);
+  const { data, failures, warnings } = run(fields, options);
+  emit(warnings, options.onWarn);
   if (failures.length > 0) {
     throw new EnvValidationError(formatReport(failures), failures);
   }
@@ -210,13 +315,18 @@ export function safeParse<S extends EnvSchema>(
   const fields = normalizeSchema(schema);
   registerSchema(fields);
 
-  if (skipValidation()) return { success: true, data: skipProxy<S>() };
+  if (skipValidation()) return { success: true, data: skipProxy<S>(), warnings: [] };
 
-  const { data, failures } = run(fields, options);
+  const { data, failures, warnings } = run(fields, options);
+  emit(warnings, options.onWarn);
   if (failures.length > 0) {
-    return { success: false, error: new EnvValidationError(formatReport(failures), failures) };
+    return {
+      success: false,
+      error: new EnvValidationError(formatReport(failures), failures),
+      warnings,
+    };
   }
-  return { success: true, data };
+  return { success: true, data, warnings };
 }
 
 interface DefineEnv {

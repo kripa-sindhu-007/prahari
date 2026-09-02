@@ -11,8 +11,8 @@ import { loadEnvFiles } from "../env-file/index.js";
 import { formatReport } from "../report.js";
 import { renderEnvExample } from "./example.js";
 import { renderDocs } from "./docs.js";
-import { runDoctor } from "./doctor.js";
-import { computeDrift, hasDrift, parseEnvKeys } from "./sync.js";
+import { renderDoctorJson, runDoctor } from "./doctor.js";
+import { computeDrift, hasDrift, parseEnvKeys, renderSyncJson } from "./sync.js";
 import { loadSchema, resolveConfigPath } from "./load.js";
 import { bold, cross, dim, green, red, tick, yellow } from "./ui.js";
 
@@ -43,6 +43,9 @@ ${bold("Options:")}
   -o, --out <path>      output file (example: default .env.example; docs: stdout)
       --stdout          print to stdout instead of writing a file (example)
       --env-file <path> also read this .env file (doctor; real env still wins)
+      --json            machine-readable output (doctor, sync); same exit codes
+      --strict          warn about vars in the env file but not the schema
+                        (doctor; requires --env-file)
   -h, --help            show this help
 `;
 
@@ -94,11 +97,20 @@ async function cmdSync(io: RunIO, values: Record<string, unknown>): Promise<numb
   const rel = relative(io.cwd, file);
 
   if (!existsSync(file)) {
+    if (values.json) {
+      io.stdout(`${JSON.stringify({ ok: false, file: rel, error: "file not found" }, null, 2)}\n`);
+      return 1;
+    }
     io.stderr(`${cross} ${bold(rel)} does not exist. Run ${bold("prahari example")} to create it.\n`);
     return 1;
   }
 
   const drift = computeDrift(schema, parseEnvKeys(readFileSync(file, "utf8")));
+
+  if (values.json) {
+    io.stdout(renderSyncJson(rel, drift));
+    return hasDrift(drift) ? 1 : 0;
+  }
 
   if (!hasDrift(drift)) {
     io.stdout(`${tick} ${bold(rel)} is in sync with your schema.\n`);
@@ -140,6 +152,17 @@ async function cmdDoctor(io: RunIO, values: Record<string, unknown>): Promise<nu
   const { schema } = await getSchema(io, values.config as string | undefined);
   const base = io.env ?? process.env;
   const envFile = values["env-file"] as string | undefined;
+  const json = values.json === true;
+  const strict = values.strict === true;
+
+  if (strict && envFile === undefined) {
+    // Against process.env this would flag PATH, HOME and a hundred others —
+    // noise, not signal. Strict mode needs a source you actually control.
+    throw new CliError(
+      `${bold("--strict")} needs ${bold("--env-file <path>")} — the process environment ` +
+        `carries hundreds of unrelated variables, so reporting "unknown" against it is noise.`,
+    );
+  }
 
   let source = base;
   if (envFile !== undefined) {
@@ -150,18 +173,35 @@ async function cmdDoctor(io: RunIO, values: Record<string, unknown>): Promise<nu
     // The real environment still wins over the file — validate what the process
     // would actually see if it booted here.
     source = loadEnvFiles(path, { base, cwd: io.cwd });
-    io.stdout(`${dim(`(against ${relative(io.cwd, path)} + the current environment)`)}\n`);
+    if (!json) {
+      io.stdout(`${dim(`(against ${relative(io.cwd, path)} + the current environment)`)}\n`);
+    }
   }
 
-  const { ok, failures } = runDoctor(schema, source);
+  // Strict reports unknowns from the FILE's own keys — the set the developer
+  // wrote and controls — not from the whole process environment.
+  const unknownKeys = strict
+    ? parseEnvKeys(readFileSync(resolve(io.cwd, envFile!), "utf8"))
+    : undefined;
 
-  for (const key of ok) io.stdout(`  ${tick} ${key}\n`);
+  const result = runDoctor(schema, source, { unknownKeys });
 
-  if (failures.length === 0) {
-    io.stdout(`\n${green(`All ${ok.length} variable(s) valid.`)}\n`);
+  if (json) {
+    io.stdout(renderDoctorJson(schema, result));
+    return result.failures.length === 0 ? 0 : 1;
+  }
+
+  for (const key of result.ok) io.stdout(`  ${tick} ${key}\n`);
+
+  for (const warning of result.warnings) {
+    io.stdout(`  ${yellow("!")} ${warning.message}\n`);
+  }
+
+  if (result.failures.length === 0) {
+    io.stdout(`\n${green(`All ${result.ok.length} variable(s) valid.`)}\n`);
     return 0;
   }
-  io.stdout(`\n${formatReport(failures)}`);
+  io.stdout(`\n${formatReport(result.failures)}`);
   return 1;
 }
 
@@ -177,6 +217,8 @@ export async function run(argv: string[], io: RunIO): Promise<number> {
         out: { type: "string", short: "o" },
         stdout: { type: "boolean" },
         "env-file": { type: "string" },
+        json: { type: "boolean" },
+        strict: { type: "boolean" },
         help: { type: "boolean", short: "h" },
       },
     });

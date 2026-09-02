@@ -8,7 +8,7 @@ export function SectionValidators() {
         <SectionHeading
           eyebrow="Built-in validators"
           title="Typed primitives, or bring your own"
-          intro="Seven zero-dependency validators cover the everyday cases and infer exact types. Need more? Drop in any Standard Schema library instead."
+          intro="Eleven zero-dependency validators cover the everyday cases and infer exact types. Need more? Write one with custom(), or drop in any Standard Schema library instead."
         />
 
         <div className="mt-12 overflow-hidden rounded-2xl border border-line bg-surface/40">

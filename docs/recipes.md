@@ -20,6 +20,8 @@ names to your app. New to prahari? Start with the [README](../README.md).
 - [Keep `.env.example` honest in CI](#keep-envexample-honest-in-ci)
 - [Secrets and redaction](#secrets-and-redaction)
 - [Defaults, optional, and the empty-string rule](#defaults-optional-and-the-empty-string-rule)
+- [Retire a variable without breaking anyone](#retire-a-variable-without-breaking-anyone)
+- [Fail CI on config problems, machine-readably](#fail-ci-on-config-problems-machine-readably)
 
 ## Validate at boot in a Node service
 
@@ -339,3 +341,37 @@ const env = defineEnv(
 env.PORT; // 3000 (default applied)
 env.TAG;  // undefined
 ```
+
+## Retire a variable without breaking anyone
+
+```ts
+export const env = defineEnv({
+  API_URL:     url(),
+  OLD_API_URL: url().deprecated("use API_URL instead").optional(),
+});
+```
+
+Anyone still setting `OLD_API_URL` gets a warning at boot; everyone else sees
+nothing. The variable keeps validating, so nothing breaks the day you mark it —
+you delete it a release later, once the warning has done its job. `prahari docs`
+and `.env.example` carry the notice too.
+
+Metadata modifiers go before `.optional()`, which closes the chain.
+
+## Fail CI on config problems, machine-readably
+
+```yaml
+- run: npx prahari sync                    # .env.example drifted from the schema
+- run: npx prahari doctor                  # the environment itself is invalid
+  env:
+    DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    NODE_ENV: production                   # so .requiredIn("production") applies
+```
+
+Add `--json` to either for structured output with the same exit codes:
+
+```bash
+prahari doctor --json | jq -r '.variables[] | select(.status=="invalid") | .key'
+```
+
+Secrets stay redacted in the JSON. See [ci.md](./ci.md).
