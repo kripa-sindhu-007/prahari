@@ -2,7 +2,7 @@ export const site = {
   name: "prahari",
   tagline: "The sentinel for your environment config.",
   devanagari: "प्रहरी",
-  url: "https://prahari-azure.vercel.app",
+  url: "https://prahari.kripasindhu.dev",
   repo: "https://github.com/kripa-sindhu-007/prahari",
   npm: "https://www.npmjs.com/package/prahari",
   install: "npm i prahari",
